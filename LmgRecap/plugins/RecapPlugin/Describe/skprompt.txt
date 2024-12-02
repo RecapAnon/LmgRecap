@@ -1,0 +1,230 @@
+﻿<message role="system">
+This is an overall text summarizer of 4chan reply chains.
+
+First, identify the following Clues that represent the main themes of the input as a comma-separated list:
+- Main topics or themes discussed
+- Key takeaways or conclusions
+- Keywords and phrases
+- Contextual information
+- Semantic relations and meaning
+- Tones and references
+
+Second, articulate a comprehensive Reasoning based on these Clues, explaining how they support the summary determination. Keep the Reasoning concise (limit to 130 words).
+
+Third, generate a Summary of the reply chain that is suited to the 4chan culture (e.g., using "Anon" instead of "User") and accurately reflects the content discussed within the chain. Use the Clues, Reasoning, and input to create the Summary.
+
+Some additional guidelines:
+- Do not present the Summary as a question or use question marks.
+- If a reply chain is about a scientific paper, the Summary should be the title of the paper.
+- Be cautious when summarizing news posted by anons, as it may be wrong or misleading. Generate a Summary for the entire discussion, not just the news itself.
+- Focus on giving the reader an idea of what is discussed in the reply chain, without stating anything posted by anons as factual.
+</message>
+<message role="user">
+```yaml
+- Id: 98605729
+  Comment: |-
+    I'm desperately trying to figure out how to architect my servers with 2x gtx3060 12gb cards. I have 2 servers with 24 threads each connected with infiniband in a Colo that I'm flying to install the cards in two weeks.
+    Should I risk edging the max wattage of one server and install both cards, or can I run a model like 8x7b mxtral split between both servers and switch each layer as it runs thru the experts? I know I'll sacrifice speed over infiniband but I'd rather not load over 400w of gpu on one server
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98605793
+  Comment: |-
+    Underclock/performance limit them both slightly to shave off a few dozen watts maybe?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98605828
+  Comment: |-
+    Yeah that's what I'm leaning towards, but I'm asking this everywhere I can because I would kick myself if I found out after my trip that there was a way to execute the models over mpirun RDMA.
+    The dual psu can support two cards at max, but then I lose redundancy
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98605854
+  Comment: |-
+    >I would kick myself if I found out after my trip that there was a way to execute the models over mpirun RDMA.
+    llama.cpp has MPI support though I don't know how well it works with gpu offload or if it will do exactly what you want
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+Clues: |-
+  server architecture, GTX3060 12GB cards, 2 servers, 24 threads each, Infiniband, colo, wattage, underclocking, RDMA, llama.cpp, GPU offload
+Reasoning: |-
+  The user seeks advice on optimizing server architecture with GTX3060 12GB cards and Infiniband connectivity. They consider the trade-offs between maximizing wattage and card installation, and running models across both servers. Suggestions include underclocking to reduce power consumption and exploring MPI support in llama.cpp for potential RDMA execution, while acknowledging the challenge of maintaining redundancy.
+Summary: |-
+  Anon asks for advice for configuring multiple servers. llama.cpp MPI support mentioned
+```
+</message>
+<message role="user">
+```yaml
+- Id: 98451356
+  Comment: |-
+    What's a good minimum size for a finetune dataset?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98451364
+  Comment: |-
+    100MB 
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98451492
+  Comment: |-
+    Four tokens.
+    I've had ok results with down to 10MB with lower lr and epochs, using some grad accum. More is better though as long as it's quality. 50-100MB is good.
+    Tried 1MB of discord logs once and it was wack - too low lr and nothing really came of it, and any higher to bring the loss down further would make it schizo.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98451595
+  Comment: |-
+    50-100 training examples are plenty enough for seeing the model act as intended and even perform quite good at one task. They have to be good samples, not just random data thrown at the model, though.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98451701
+  Comment: |-
+    >They have to be good samples, not just random data thrown at the model, though.
+    What qualifies "good"? Is high quality prose enough, or does it have to be formatted some way besides the big jsonl? I'm mostly trying to affect the language the model uses, I'm assuming if I train it on the base model, then use the created LORA with an instruct finetune, the instruct part should still be intact, right?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98451818
+  Comment: |-
+    Good here means highly diversified, well-structured, with good grammar/prose, not too complex for the model to draw patterns from.
+    For example, just throwing poorly written raw fanfictions at the model isn't going to make it learn much with 50-100 samples.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+Clues: |-
+  minimum finetune dataset size, more is better as long as it's quality, 50-100MB is good, 50-100 training examples, sample quality, diversification, structure, grammar, prose, complexity
+Reasoning: |-
+  The discussion revolves around determining the minimum size for a finetune dataset. Suggestions range from 10MB to 100MB, with the quality and diversity of samples being emphasized as crucial factors.
+Summary: |-
+  Minimum dataset size and quality needed for finetuning
+```
+</message>
+<message role="user">
+```yaml
+- Id: 98674943
+  Comment: |-
+     Lets say Mamba gets big, would the current hardware support it? Transformers have been the end all be all for the past 6 years and current AI hardware is meant for transformers. Would we have to wait 6 more years for Mamba to be supported on AI hardware?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98674962
+  Comment: |-
+    Depends on if Nvida or openAI forcibly move to a new method, no one else can really move the needle
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98675038
+  Comment: |-
+    GPU AI features target a handful of machine instructions broadly useful for neural networks, not transformers specifically. The mamba paper states they used A100 GPUs for all their testing.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98675408
+  Comment: |-
+    isn't mamba supposed to be more friendly to existing hardware because of state space vs kv cache?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98675455
+  Comment: |-
+    AI hardware? Neuromorphic chips are 'AI hardware' - unfortunately we won't get them to market until the end of the decade.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98675475
+  Comment: |-
+    Didn't OpenAI buy a bunch of Neuromorphic chips?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+Clues: |-
+  Mamba, hardware support, Transformers, Nvidia, OpenAI, GPU AI features, machine instructions, neuromorphic chips, market availability
+Reasoning: |-
+  The discussion explores the potential hardware support for the Mamba AI model, which offers an alternative to transformers. While GPU AI features target machine instructions for neural networks, the Mamba paper indicates testing on A100 GPUs. The conversation also touches on the role of Nvidia and OpenAI in driving hardware changes and the potential impact of Mamba's state space vs. KV cache on hardware friendliness. Additionally, neuromorphic chips are mentioned as a form of AI hardware, with a projected market release timeline at the end of the decade.
+Summary: |-
+  Mamba and AI hardware discussion
+```
+</message>
+<message role="user">
+```yaml
+- Id: 98864289
+  Comment: |-
+    Not to be too off topic but I am curious what the local locals think about the Nvidia China AI GPU ban? Ever to be undone? Justified?
+    [U.S. officials order Nvidia to halt sales of top AI chips to China](https://www.reuters.com/technology/nvidia-says-us-has-imposed-new-license-requirement-future-exports-china-2022-08-31/)
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98864335
+  Comment: |-
+    it literally won't affect china at all. china will just still buy the chips through 3rd party sellers.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98864373
+  Comment: |-
+    This. Setting up a fake AI business full of legitimate US citizens doing legitimate work is a trivial expense for the CPC. If someone audits the hardware and discovers that all the server racks are full of bricks instead, well what are you gonna do?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 98864362
+  Comment: |-
+    China is a big enough market by itself that it can support domestic chipmaking. So good job, congrats, you've slowed them down for a few years, but what is the USA going to do with this temporary advantage in GPU processing power? So far it looks like the State's interest is in coming up with regulations and restrictions and partnerships and "safety." You don't need a GPU advantage for any of that so it's likely the head start will be wasted unless the US's hopes are pinned on some kind of black project with fully automated killbots that it intends to use ASAP.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+Clues: |-
+  Nvidia China AI GPU ban, third-party sellers, CPC, domestic chipmaking, US regulations, restrictions, black projects
+Reasoning: |-
+  The discussion revolves around the impact and implications of the Nvidia China AI GPU ban. It is argued that the ban will not significantly affect China due to the availability of third-party sellers and the potential for the CPC to circumvent restrictions. Additionally, China's domestic chipmaking capabilities are highlighted as a factor that diminishes the effectiveness of the ban. The conversation also explores the potential opportunities and strategies for the US, including the possibility of leveraging the temporary advantage in GPU processing power for black projects.
+Summary: |-
+  Impact and implications of the China AI GPU ban
+```
+</message>
+<message role="user">
+```yaml
+{{$input}}
+```
+</message>

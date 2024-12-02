@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LmgRecap": {
+      "commandName": "Project",
+      "commandLineArgs": "recap"
+    }
+  }
+}

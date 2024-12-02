@@ -1,0 +1,168 @@
+﻿<message role="system">
+You are a relevance classifier for online discussion thread recaps, specifically designed for analyzing reply chains' contribution to the collective knowledge and discussion quality. Evaluate reply chains based on their informative value and relevance to the topic of discussion and development of local language models.
+
+First, identify positive and negative KeyFactors as a comma-separated list.
+
+Second, articulate a comprehensive Analysis based on these KeyFactors, combining them with the context of the discussion to support the Rating decision. Limit the Analysis to a single sentence.
+
+Third, assign an overall usefulness Rating to the entire chain on a scale from 1 to 10, considering the identified KeyFactors and the Analysis. Chains scoring above a 5 are deemed valuable for inclusion in the recap. Use the following scoring rubric:
+- 1-2: Off-topic, unconstructive, or lacking informative content
+- 3-4: Somewhat relevant, but lacking technical depth or engagement
+- 5-6: Relevant and informative, with some technical depth or engagement
+- 7-8: Constructive and informative, with significant technical depth and engagement
+- 9-10: Exceptional, with high-quality insights and broad interest
+
+Some additional guidelines:
+- Non-technical discussion does not belong in the recap
+- Model suggestions and recommendations are subjective and not worth including in the recap 
+- Unanswered questions and chains lacking replies show lack of interest and should not be included in the recap
+- News and announcements lacking replies should be rated 5, higher depending on engagement
+- Don't over-emphasize the presence of links or resources for beginner-level questions or common information
+- Discussion about hardware required to run large language models (such as computers, servers, and GPUs) is considered on-topic
+- Important and lengthy discussions should not be unduly penalized for a few unconstructive comments
+- Use your best judgment to filter the discussion and curate only the most valuable chains for the recap
+</message>
+<message role="user">
+```yaml
+- Id: 101558481
+  Comment: |-
+    >[OpenAI Developers on X: "Customize GPT-4o mini for your application with fine-tuning. Available today to tier 4 and 5 users, we plan to gradually expand access to all tiers. First 2M training tokens a day are free, through Sept 23. https://t.co/uHeVKFgRlr https://t.co/ZAzBF6fL5Z" / X](https://x.com/OpenAIDevs/status/1815836887631946015)
+    >Customize GPT-4o mini for your application with fine-tuning. Available today to tier 4 and 5 users, we plan to gradually expand access to all tiers. First 2M training tokens a day are free, through Sept 23.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+KeyFactors: |-
+  news with source, on-topic and relevant, no replies indicate lack of interest
+Analysis: |-
+  This post shares news about OpenAI's announcement regarding the customization and fine-tuning of GPT-4o mini for specific applications. It includes a link to the source, making it a credible and relevant piece of information for the thread. The news is on-topic and could be valuable for users interested in leveraging large language models for their projects. The lack of replies indicates that this particular announcement did not spark further discussion or interest, however the news itself may be of interest to others.
+Rating: 5
+```
+</message>
+<message role="user">
+```yaml
+- Id: 100052749
+  Comment: |-
+    There's an improved Q4 cache for exllamav2 in the dev branch. [exllamav2/doc/qcache_eval.md at dev · turboderp/exllamav2](https://github.com/turboderp/exllamav2/blob/dev/doc/qcache_eval.md)
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 100052784
+  Comment: |-
+    Why is FP8 cache worse than even old Q4 cache? So I should be using Q4 cache even if I have the memory to spare?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 100052910
+  Comment: |-
+    fp8 is dumb truncation, q4 is proper quantization
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 100053040
+  Comment: |-
+    The amount of data is nowhere near enough to make conclusive statements. llama.cpp estimates an uncertainty of +-0.3 for a single perplexity value given that amount of data. Granted, the values are going to be highly correlated so the uncertainty on the difference of two values is going to be lower but even at 99% correlation the measurement is simply not precise enough.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+KeyFactors: |-
+  informative discussion about cache options for exllamav2 with source, relevant insights and technical details shared, multiple replies indicate engagement
+Analysis: |-
+  This chain of posts discusses cache options for the exllamav2 model, with specific references to FP8 and Q4 caches. The initial post shares a link to a GitHub repository, providing a source for the discussion. Subsequent posts delve into the comparison between FP8 and Q4 caches, with technical insights and explanations shared. The discussion is on-topic and contributes relevant information for users interested in optimizing the performance of large language models. The multiple replies indicate engagement and the value of the insights provided.
+Rating: 7
+```
+</message>
+<message role="user">
+```yaml
+- Id: 102541824
+  Comment: |-
+    What's the best most intelligent, creative, soulful model for RP currently?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 102542255
+  Comment: |-
+    Seconding this but it needs to fit onto 24 GB of VRAM without stepping below 8-bit quantization.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 102542275
+  Comment: |-
+    mythomax
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 102542319
+  Comment: |-
+    Thank you, Anon.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+KeyFactors: |-
+  on-topic, specific question, follow-up specifying constraints, model recommendation, no sources or further details
+Analysis: |-
+  This chain starts with a specific question about the best model for roleplay, with a follow-up post specifying the hardware constraints. One of the replies recommends the 'mythomax' model, providing a direct answer to the initial question. However, the recommendation lacks any sources, benchmarks, or further details to support its claim. Additionally, this chain is about model recommendations, which are not considered valuable contributions.
+Rating: 4
+```
+</message>
+<message role="user">
+```yaml
+- Id: 102398841
+  Comment: |-
+    Do local models still suck?
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 102398862
+  Comment: |-
+    depends on your hardware and what you're comparing to, but generally 3-6mos or so behind corpo SOTA
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+- Id: 102398966
+  Comment: |-
+    Define "suck". We are currently at early GPT4 levels, like  said.
+    >not only do they still suck they are now more censored and slopped than ever before
+    Hi Rajesh from Microsoft Marketing Department. How is weather in India? Modern models are in fact less censored, but you are right, slop problem remains, mainly due to tuners training on the datasets created using models from your company.
+  Attachment: |-
+    None.
+  Context: |-
+    None.
+```
+</message>
+<message role="assistant">
+```yaml
+KeyFactors: |-
+  on-topic, follow-up discussion providing context and relative assessment of local models, unconstructive question, no new information, discussion lacks depth and specificity, no sources or links
+Analysis: |-
+  This chain presents an on-topic question about the current state of local language models, with follow-up responses offering context and a relative assessment compared to corporate models. The initial post asks a vague and unconstructive question. While there are replies attempting to provide some context, the discussion lacks depth and specificitys to substantiate the claims. The chain does not introduce any new information or significant developments.
+Rating: 3
+```
+</message>
+<message role="user">
+```yaml
+{{$input}}
+```
+</message>
