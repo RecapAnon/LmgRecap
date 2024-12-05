@@ -207,32 +207,69 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
 let session = new InferenceSession(appSettings.ResnetModelPath)
 
 let imageToOnnx (imageBytes: byte array) (size: int) =
-    let stream = new MemoryStream(imageBytes)
+    use stream = new MemoryStream(imageBytes)
     use image = Image.Load<Rgb24>(stream)
-    image.Mutate(fun c -> c.Resize(size, size) |> ignore)
-    let tensor = new DenseTensor<float32>([| 1; 3; size; size |])
+
+    let h, w = image.Height, image.Width
+
+    let h', w' =
+        if h > w then
+            (size, int (float size * float w / float h))
+        else
+            (int (float size * float h / float w), size)
+
+    image.Mutate(fun c ->
+        c.Resize(w', h', KnownResamplers.NearestNeighbor) |> ignore
+        c.Pad(size, size, Color.White) |> ignore)
+
+    let width = image.Width
+    let height = image.Height
+
+    for y in 0 .. (height - h') / 2 do
+        for x in 0 .. width - 1 do
+            image[x, y] <- image[x, (height - h') / 2 + 1]
+
+    for y in height - (height - h') / 2 .. height - 1 do
+        for x in 0 .. width - 1 do
+            image[x, y] <- image[x, height - (height - h') / 2 - 1]
+
+    for y in 0 .. height - 1 do
+        for x in 0 .. (width - w') / 2 do
+            image[x, y] <- image[(width - w') / 2 + 1, y]
+
+    for y in 0 .. height - 1 do
+        for x in width - (width - w') / 2 .. width - 1 do
+            image[x, y] <- image[width - (width - w') / 2 - 1, y]
+
+    let tensor = new DenseTensor<float32>([| 1; size; size; 3 |])
 
     for y = 0 to size - 1 do
         for x = 0 to size - 1 do
             let pixel = image[x, y]
-            tensor[0, 0, y, x] <- float32 pixel.R / 255.0f
-            tensor[0, 1, y, x] <- float32 pixel.G / 255.0f
-            tensor[0, 2, y, x] <- float32 pixel.B / 255.0f
+            tensor[0, y, x, 0] <- float32 pixel.R / 255.0f
+            tensor[0, y, x, 1] <- float32 pixel.G / 255.0f
+            tensor[0, y, x, 2] <- float32 pixel.B / 255.0f
 
     tensor
 
-let identify imageBytes =
-    let labels = [| "miku"; "other"; "teto" |]
-    let tensor = imageToOnnx imageBytes 192
-    let inputs = [ NamedOnnxValue.CreateFromTensor("tensor", tensor) ]
-
+let identify (imageBytes: byte array) =
+    let tensor = imageToOnnx imageBytes 512
+    let inputs = [ NamedOnnxValue.CreateFromTensor("inputs", tensor) ]
     let results = session.Run(inputs)
-
     let outputTensor = results[0].AsTensor<float32>()
-    let maxScore = outputTensor |> Seq.max
-    let maxIndex = Array.IndexOf(outputTensor |> Seq.toArray, maxScore)
+    let probs = outputTensor.ToArray()
+    let allowed = [| "kasane_teto"; "hatsune_miku"; "kagamine_rin"; "akita_neru" |]
 
-    (labels[maxIndex], maxScore)
+    let tags =
+        session.ModelMetadata.CustomMetadataMap["tags"]
+        |> JsonSerializer.Deserialize<string[]>
+
+    Array.zip tags probs
+    |> Array.filter (fun (_, score) -> score >= 0.5f)
+    |> Array.filter (fun (tag, _) -> allowed.Contains(tag))
+    |> Array.sortByDescending snd
+    |> Array.tryHead
+    |> Option.defaultValue ("other", 1f)
 
 let memories =
     let myHandler = new MyRedirectingHandler(appSettings)
@@ -768,10 +805,7 @@ let recapToText builder =
 
     builder.Chains
     |> Seq.collect (fun c -> c.Nodes)
-    |> Seq.filter (fun node ->
-        node.label.IsSome
-        && (node.label.Value = "miku" || node.label.Value = "teto")
-        && node.confidence.Value > 0.85f)
+    |> Seq.filter (fun node -> node.label.IsSome && (node.label.Value <> "other"))
     |> Seq.sortBy (fun c -> c.id)
     |> mapChainNodeSeqToString
     |> sprintf "--Miku (free space):\n%s\n"
@@ -969,10 +1003,7 @@ let printRecapHtml builder =
     builder.Chains
     |> Seq.collect (fun c -> c.Nodes)
     |> Seq.filter (fun node -> Option.isSome node.filename)
-    |> Seq.filter (fun node ->
-        node.label.IsSome
-        && (node.label.Value = "miku" || node.label.Value = "teto")
-        && node.confidence.Value > 0.85f)
+    |> Seq.filter (fun node -> node.label.IsSome && (node.label.Value <> "other"))
     |> Seq.sortBy (fun c -> c.id)
     |> Seq.iter (fun miku ->
         sb.Append($"""<img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img>""")
