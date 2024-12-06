@@ -841,6 +841,7 @@ let recapToText builder =
     |> Array.iter (fun i ->
         i
         |> getIncludedNodesMinRating
+        |> Seq.truncate appSettings.MaxReplies
         |> mapChainNodeSeqToString
         |> (fun x -> sprintf "--%s: %s:\n%s\n" (i.Category) i.Summary x)
         |> sb.Append
@@ -860,7 +861,7 @@ let recapToText builder =
     builder.Chains
     |> Array.filter (fun r -> r.Category <> "Paper")
     |> Array.filter (fun r -> minRatingChain r.Rating)
-    |> Array.sortByDescending (fun c -> (c.Rating, c.Summary))
+    |> Array.sortByDescending (fun c -> (c.Rating, (c.Nodes.Length), c.Summary))
     |> Array.iter (fun i ->
         i
         |> getIncludedNodesMinRating
@@ -993,7 +994,7 @@ let printRecapHtml builder =
 
     builder.Chains
     |> Array.filter (fun r -> r.Category <> "Paper" && minRatingChain r.Rating)
-    |> Array.sortByDescending (fun c -> (c.Rating, c.Summary))
+    |> Array.sortByDescending (fun c -> (c.Rating, (c.Nodes.Length), c.Summary))
     |> Array.iter chainToHtml
 
     sb.Append("</div></div>") |> ignore
