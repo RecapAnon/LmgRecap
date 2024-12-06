@@ -219,7 +219,7 @@ let imageToOnnx (imageBytes: byte array) (size: int) =
             (int (float size * float h / float w), size)
 
     image.Mutate(fun c ->
-        c.Resize(w', h', KnownResamplers.NearestNeighbor) |> ignore
+        c.Resize(w', h', KnownResamplers.Lanczos3) |> ignore
         c.Pad(size, size, Color.White) |> ignore)
 
     let width = image.Width
