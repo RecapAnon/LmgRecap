@@ -204,7 +204,8 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
         globalLogger.LogError e.Message
         Error e.Message
 
-let session = new InferenceSession(appSettings.ResnetModelPath)
+let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0);
+let session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
 
 let imageToOnnx (imageBytes: byte array) (size: int) =
     use stream = new MemoryStream(imageBytes)
