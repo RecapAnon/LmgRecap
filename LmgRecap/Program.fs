@@ -764,7 +764,7 @@ let categorize (builder: RecapBuilder) =
     let categorizeChain chain =
         match chain.Nodes[0].comment.Contains("https://arxiv.org") with
         | true -> { chain with Category = "Paper" }
-        | false -> { chain with Category = "" }
+        | false -> chain
 
     { builder with
         Chains = Array.map categorizeChain builder.Chains }
