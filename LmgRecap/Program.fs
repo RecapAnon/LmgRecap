@@ -108,6 +108,9 @@ type ChainNodeViewModel =
       attachment: string
       context: string }
 
+type ChainViewModel =
+    { Id: int; Nodes: ChainNodeViewModel[] }
+
 [<CLIMutable>]
 type RatingOutput =
     { KeyFactors: string
@@ -796,6 +799,18 @@ let describe (recapPluginFunctions: KernelPlugin) (builder: RecapBuilder) =
             Chains = Array.map (fun c -> describeChainMinRating recapPluginFunctions c) builder.Chains }
     | false -> builder
 
+let recapToYaml builder =
+    builder.Chains
+    |> Array.filter (fun r -> r.Rating >= 3)
+    |> Array.filter (fun r -> (getIncludedNodes false (fun c -> c >= 3) r) |> Seq.length > 0)
+    |> Array.mapi (fun i r ->
+        { Id = i
+          Nodes = Array.map toViewModel r.Nodes })
+    |> prettyPrintViewModel
+    |> fun s -> File.WriteAllText($"recap-{builder.ThreadId}.yaml", s)
+
+    builder
+
 let recapToText builder =
     let mapChainNodeSeqToString (n: ChainNode seq) =
         n
@@ -1093,6 +1108,7 @@ let printRecapOnly threadNumber =
     |> createRecapBuilder
     |> loadRecapFromSaveFile
     |> printRecapHtml
+    |> recapToYaml
     |> recapToText
     |> printfn "%s"
     |> ignore
