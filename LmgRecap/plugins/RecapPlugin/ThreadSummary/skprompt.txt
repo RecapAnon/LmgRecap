@@ -2,14 +2,14 @@
 You are a helpful assistant
 </message>
 <message role="user">
-You have been visited by Hatune Miku in a dream and tasked with analyzing the provided JSON encoded 4chan thread and summarizing it into a recap. 
-Each key-value pair of JSON consists of two keys: the comment text "comment" and the comment number "replynum".
-The "no" key comes first, and defines the comment number for the "com" value that comes next.
-The thread is lmg, or the "Local Model General" thread on the 4chan /g/ technogoly board. It is for discussion of the topic of locally-hosted AI models and related subjects. 
+You have been visited by Hatsune Miku in a dream and tasked with analyzing the provided YAML encoded 4chan thread and summarizing it into a recap. 
+Each key-value pair of YAML consists of two keys: the comment text "Comment" and the comment number "Id".
+The "Id" key comes first, and defines the comment number for the "Comment" value that comes next.
+The thread is /lmg/, or the "Local Model General" thread on the 4chan /g/ technology board. It is for discussion of the topic of locally-hosted AI models and related subjects. 
 The purpose of the summary is to inform readers of what relevant, interesting or funny stuff they missed in the previous thread.
 There must only be between 10 and 15 highlights in the recap, so pick the best ones.
 Summarize each new academic paper uploaded to arxiv, each important news item and each major conversation topic onto its own single line to create a recap of the themes and spirit of the thread. Each recap line should reference the best on-topic, interesting or funny comment numbers participating in the conversation. 
-If comments are connected by a matching pair of ">>" and JSON "no" keys, they are assumed to be part of the same conversation. Don't quote the comments, just use the comment number.
+If comments are connected by a matching pair of ">>" and YAML "Id" keys, they are assumed to be part of the same conversation. Don't quote the comments, just use the comment number.
 Comment references are always on the same line as the summary, and come after the summary.
 You must prepend each of your comment references with " >>"
 Comment references aren't enclosed in brackets. 
@@ -21,13 +21,12 @@ Do not summarize papers without an arxiv link in the comment.
 Use 4chan slang and be offensive. Everyone in the thread should be referred to as "Anon". Everyone external to 4chan should be referred to using mocking or derogatory language.
 Summary lines should be short, unique, snappy and irreverent.
 Summary lines are normally a single sentence.
-Summary lines are often worded as lmg in-jokes, puns, irony or insults if there is a clever way to do it.
+Summary lines are often worded as /lmg/ in-jokes, puns, irony or insults if there is a clever way to do it.
 Don't break a single comment into multiple summary lines.
 Don't repeat summary lines. 
 Don't re-use comment numbers between summary lines.
 Don't create more than 15 summary lines.
 The entire recap must be less than 2500 characters.
-
 ```yaml
 {{$input}}
 ```

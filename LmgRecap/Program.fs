@@ -109,7 +109,7 @@ type ChainNodeViewModel =
       context: string }
 
 type ChainViewModel =
-    { Id: int; Nodes: ChainNodeViewModel[] }
+    { ReplyChainNumber: int; Comments: ChainNodeViewModel[] }
 
 [<CLIMutable>]
 type RatingOutput =
@@ -805,13 +805,14 @@ let recapToYaml builder =
     |> Array.filter (fun r -> r.Rating >= 3)
     |> Array.filter (fun r -> (getIncludedNodes false (fun c -> c >= 3) r) |> Seq.length > 0)
     |> Array.mapi (fun i r ->
-        { Id = i
-          Nodes = Array.map toViewModel r.Nodes })
+        { ReplyChainNumber = i
+          Comments = Array.map toViewModel r.Nodes })
     |> prettyPrintViewModel
 
 let recapToYamlFile builder =
     recapToYaml builder
     |> fun s -> File.WriteAllText($"recap-{builder.ThreadId}.yaml", s)
+
     builder
 
 let recapToText builder =
