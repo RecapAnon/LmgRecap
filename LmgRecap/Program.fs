@@ -293,6 +293,7 @@ let kernel =
     let aiClient =
         let clientOptions = new OpenAIClientOptions()
         clientOptions.Endpoint <- new Uri(appSettings.Completion.Endpoint)
+        clientOptions.NetworkTimeout <- new TimeSpan(2, 0, 0)
 
         new OpenAIClient(new ClientModel.ApiKeyCredential(appSettings.Completion.Key), clientOptions)
 
