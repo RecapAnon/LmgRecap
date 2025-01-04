@@ -807,8 +807,10 @@ let recapToYaml builder =
         { Id = i
           Nodes = Array.map toViewModel r.Nodes })
     |> prettyPrintViewModel
-    |> fun s -> File.WriteAllText($"recap-{builder.ThreadId}.yaml", s)
 
+let recapToYamlFile builder =
+    recapToYaml builder
+    |> fun s -> File.WriteAllText($"recap-{builder.ThreadId}.yaml", s)
     builder
 
 let recapToText builder =
@@ -1103,12 +1105,21 @@ let dropSummary threadNumber postNumber =
 
     Task.CompletedTask
 
+let threadSummaryRecap threadNumber =
+    threadNumber
+    |> createRecapBuilder
+    |> loadRecapFromSaveFile
+    |> recapToYaml
+    |> (askDefault recapPluginFunctions["ThreadSummary"])
+    |> printfn "%s"
+    |> ignore
+
 let printRecapOnly threadNumber =
     threadNumber
     |> createRecapBuilder
     |> loadRecapFromSaveFile
     |> printRecapHtml
-    |> recapToYaml
+    |> recapToYamlFile
     |> recapToText
     |> printfn "%s"
     |> ignore
@@ -1193,6 +1204,11 @@ let main argv =
         |> addArgument argument3
         |> setHandler2 dropSummary argument1 argument3
 
+    let command7 =
+        CommandLine.Command "thread-summary"
+        |> addArgument argument1
+        |> setHandler threadSummaryRecap argument1
+
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
@@ -1208,4 +1224,5 @@ let main argv =
     |> addCommand command4
     |> addCommand command5
     |> addCommand command6
+    |> addCommand command7
     |> invoke argv
