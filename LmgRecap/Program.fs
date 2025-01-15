@@ -1158,6 +1158,19 @@ let threadSummaryRecap threadNumber =
     |> printfn "%s"
     |> ignore
 
+let generateNewscasterScript threadNumber =
+    threadNumber
+    |> createRecapBuilder
+    |> loadRecapFromSaveFile
+    |> recapToText
+    |> (fun s -> s.Split('\n'))
+    |> Array.filter (fun line -> line.StartsWith "--")
+    |> Array.map (fun line -> line.Replace("--", "").Replace(": ", ""))
+    |> String.concat "\n"
+    |> (askDefault recapPluginFunctions["NewscasterScript"])
+    |> printfn "%s"
+    |> ignore
+
 let printRecapOnly threadNumber =
     threadNumber
     |> createRecapBuilder
@@ -1253,6 +1266,11 @@ let main argv =
         |> addArgument argument1
         |> setHandler threadSummaryRecap argument1
 
+    let command8 =
+        CommandLine.Command "generate-newscaster-script"
+        |> addArgument argument1
+        |> setHandler generateNewscasterScript argument1
+
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
@@ -1270,4 +1288,5 @@ let main argv =
     |> addCommand command5
     |> addCommand command6
     |> addCommand command7
+    |> addCommand command8
     |> invoke argv

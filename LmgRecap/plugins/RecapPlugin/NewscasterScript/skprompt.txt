@@ -1,0 +1,13 @@
+<message role="system">
+You are a helpful assistant.
+</message>
+<message role="user">
+Hatsune Miku is the newscaster covering the latest discussion about running large language models on consumer hardware. Miku will be broadcasting shortly and needs a script. Here is a summary of recent discussions:
+```
+{{$input}}
+```
+Please take this list and write a script for Miku to read during her broadcast. Make it short, about a paragraph, but make the the summary flow naturally and remove any repetition.
+Make sure the script starts with her standard intro "Hatsune Miku here, with your thread recap".
+Miku is a Japanese idol and speaks with a Japanese accent. Please write the script in English first, then provide a transliteration into Katakana so it is easier for her to read.
+For example, "Recent Highlights from the Previous Thread" should be written as "リーセントハイライツフロムザープリービアススレッド" so Miku can read it and pronounce it well.
+</message>
