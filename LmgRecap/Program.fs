@@ -21,6 +21,7 @@ open Microsoft.ML.OnnxRuntime
 open Microsoft.ML.OnnxRuntime.Tensors
 open Microsoft.ML.OnnxRuntimeGenAI
 open Microsoft.SemanticKernel
+open Microsoft.SemanticKernel.ChatCompletion
 open Microsoft.SemanticKernel.Connectors.Chroma
 open Microsoft.SemanticKernel.Connectors.OpenAI
 open Microsoft.SemanticKernel.Memory
@@ -35,6 +36,11 @@ open SixLabors.ImageSharp.Processing
 open YamlDotNet.Core
 open YamlDotNet.Serialization
 open YamlDotNet.Serialization.NamingConventions
+
+type CaptionMethod =
+    | Disabled = 0
+    | Onnx = 1
+    | Api = 2
 
 type Selenium =
     { Downloads: string
@@ -66,7 +72,8 @@ type AppSettings =
       Describe: bool
       Selenium: Selenium
       Filters: string[]
-      Logging: LoggingConfig }
+      Logging: LoggingConfig
+      CaptionMethod: CaptionMethod }
 
 type MyRedirectingHandler(appSettings) =
     inherit DelegatingHandler(new HttpClientHandler())
@@ -109,7 +116,8 @@ type ChainNodeViewModel =
       context: string }
 
 type ChainViewModel =
-    { ReplyChainNumber: int; Comments: ChainNodeViewModel[] }
+    { ReplyChainNumber: int
+      Comments: ChainNodeViewModel[] }
 
 [<CLIMutable>]
 type RatingOutput =
@@ -290,19 +298,21 @@ let memories =
         .Build()
 
 let kernel =
-    let aiClient =
+    let aiClient service =
         let clientOptions = new OpenAIClientOptions()
-        clientOptions.Endpoint <- new Uri(appSettings.Completion.Endpoint)
+        clientOptions.Endpoint <- new Uri(service.Endpoint)
         clientOptions.NetworkTimeout <- new TimeSpan(2, 0, 0)
 
-        new OpenAIClient(new ClientModel.ApiKeyCredential(appSettings.Completion.Key), clientOptions)
+        new OpenAIClient(new ClientModel.ApiKeyCredential(service.Key), clientOptions)
 
     let builder = Kernel.CreateBuilder()
 
     builder.Services.AddSingleton((loggerFactory appSettings.Logging.LogLevel.Default))
     |> ignore
 
-    builder.AddOpenAIChatCompletion(appSettings.Completion.Model, aiClient)
+    builder
+        .AddOpenAIChatCompletion(appSettings.Completion.Model, aiClient appSettings.Completion, "Completion")
+        .AddOpenAIChatCompletion(appSettings.Multimodal.Model, aiClient appSettings.Multimodal, "Multimodal")
     |> ignore
 
     builder.Build()
@@ -351,7 +361,12 @@ let ask kernelFunction (kernelArguments: KernelArguments) =
         i
 
 let askDefault kernelFunction prompt =
-    KernelArguments() |> set "input" prompt |> ask kernelFunction
+    let openAIPromptExecutionSettings = new OpenAIPromptExecutionSettings()
+    openAIPromptExecutionSettings.ServiceId <- "Completion"
+
+    KernelArguments(openAIPromptExecutionSettings)
+    |> set "input" prompt
+    |> ask kernelFunction
 
 let loadRecapFromSaveFile builder =
     let filename = $"{builder.ThreadId}.recap.json"
@@ -603,7 +618,25 @@ let captionNodePhi3 phi3Model imagePath =
         response <- response.Append(lastElement)
 
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", response)
-    response.ToString().Trim()
+    Some (response.ToString().Trim())
+
+let captionNodeApi url =
+    let chat =
+        kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
+
+    let history = new ChatHistory()
+    history.AddSystemMessage("You are a friendly and helpful assistant that responds to questions directly.")
+
+    let message = new ChatMessageContentItemCollection()
+    message.Add(new TextContent("Describe what is in the image."))
+    message.Add(new ImageContent(new Uri(url)))
+
+    history.AddUserMessage(message)
+
+    let result = chat.GetChatMessageContentAsync(history).Result
+    globalLogger.LogInformation("Generation complete: {GeneratorResponse}", result.Content)
+
+    Some result.Content
 
 let captionNode (driver: FirefoxDriver) phi3Model node =
     let mutable caption = node.caption
@@ -618,7 +651,13 @@ let captionNode (driver: FirefoxDriver) phi3Model node =
         downloadLink.Click()
         Threading.Thread.Sleep(4000)
         let path = Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
-        caption <- captionNodePhi3 phi3Model path |> Some
+
+        caption <-
+            match appSettings.CaptionMethod with
+            | CaptionMethod.Onnx -> captionNodePhi3 phi3Model path
+            | CaptionMethod.Api -> captionNodeApi $"https://i.4cdn.org/g/{url}"
+            | _ -> caption
+
         let bytes = File.ReadAllBytes(path)
         File.Delete(path)
         bytes
@@ -733,9 +772,12 @@ let rateMultipleInChain (recapPluginFunctions: KernelPlugin) (chain: Chain) =
     let ratePost () =
         let c =
             getIncludedNodesMinRating chain
-            |> setToString (fun f -> Seq.skip (f.Count() - 5) f)
+            |> setToString (fun f -> Seq.skip (f.Count() - 15) f)
 
-        KernelArguments()
+        let openAIPromptExecutionSettings = new OpenAIPromptExecutionSettings()
+        openAIPromptExecutionSettings.ServiceId <- "Completion"
+
+        KernelArguments(openAIPromptExecutionSettings)
         |> set "chain" c
         |> set "unrated" (unrated |> setToString (Seq.truncate 5))
         |> ask recapPluginFunctions["RateMultiple"]
@@ -1220,6 +1262,7 @@ let main argv =
     |> addGlobalOption (CommandLine.Option<bool> "--RateMultiple")
     |> addGlobalOption (CommandLine.Option<bool> "--RateChain")
     |> addGlobalOption (CommandLine.Option<bool> "--Describe")
+    |> addGlobalOption (CommandLine.Option<CaptionMethod> "--CaptionMethod")
     |> addCommand command1
     |> addCommand command2
     |> addCommand command3
