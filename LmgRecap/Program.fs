@@ -936,6 +936,19 @@ let recapToText builder =
             else
                 ()))
 
+    builder.Chains
+    |> Seq.filter (fun chain -> chain.Rating = -1)
+    |> Seq.length
+    |> fun count -> sprintf "Remaining unrated chains: %i\n" count
+    |> globalLogger.LogInformation
+
+    builder.Chains
+    |> Seq.collect (fun c -> c.Nodes)
+    |> Seq.filter (fun node -> node.rating = -1 && node.filtered = false)
+    |> Seq.length
+    |> fun count -> sprintf "Remaining unrated nodes: %i\n" count
+    |> globalLogger.LogInformation
+
     let result = header + sb.ToString() + footer
     sprintf "Recap Length: %i\n" result.Length |> globalLogger.LogInformation
     result
