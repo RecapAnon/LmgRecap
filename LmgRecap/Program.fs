@@ -1221,6 +1221,54 @@ let recap threadNumber =
     driver.Close()
     driver.Quit()
 
+let monitorThread threadNumber =
+    let driver = new FirefoxDriver(options)
+    while true do
+        let mutable builder =
+            threadNumber
+            |> createRecapBuilder
+            |> loadRecapFromSaveFile
+            |> fetchThreadJson driver
+            |> saveRecap
+            |> caption driver
+            |> saveRecap
+            |> categorize
+
+        let totalPosts = builder.Chains |> Seq.collect (fun c -> c.Nodes) |> Seq.length
+
+        let unratedChains =
+            builder.Chains |> Seq.filter (fun c -> c.Rating = -1) |> Seq.length
+
+        let unratedPosts =
+            builder.Chains
+            |> Seq.collect (fun c -> c.Nodes)
+            |> Seq.filter (fun node -> node.rating = -1 && node.filtered = false)
+            |> Seq.length
+
+        globalLogger.LogInformation
+            $"Monitoring thread {threadNumber} - Total Posts: {totalPosts}, Unrated Posts: {unratedPosts}, Unrated Chains: {unratedChains}"
+
+        if unratedPosts > 50 then
+            builder <- builder |> rateMultiple recapPluginFunctions |> saveRecap
+
+        if unratedChains > 20 && unratedPosts < 50 then
+            builder <- builder |> rateChains recapPluginFunctions |> saveRecap
+
+        if totalPosts > 300 then
+            builder <- builder |> describe recapPluginFunctions |> saveRecap
+
+        builder |> recapToText |> printfn "%s"
+
+        if Environment.OSVersion.Platform = PlatformID.Win32NT then
+            Console.Beep()
+        else
+            printf "\a"
+
+        Thread.Sleep(300000)
+
+    driver.Close()
+    driver.Quit()
+
 [<EntryPoint>]
 let main argv =
     appSettings <-
@@ -1284,6 +1332,11 @@ let main argv =
         |> addArgument argument1
         |> setHandler generateNewscasterScript argument1
 
+    let command9 =
+        CommandLine.Command "monitor"
+        |> addArgument argument1
+        |> setHandler monitorThread argument1
+
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
@@ -1302,4 +1355,5 @@ let main argv =
     |> addCommand command6
     |> addCommand command7
     |> addCommand command8
+    |> addCommand command9
     |> invoke argv
