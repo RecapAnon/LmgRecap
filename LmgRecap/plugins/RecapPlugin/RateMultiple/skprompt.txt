@@ -9,9 +9,8 @@ Third, assign an overall usefulness Rating to the post on a scale from 1 to 10, 
 
 Some additional guidelines:
 - Provide ratings for all posts listed under Unrated. Posts already marked for inclusion are provided only for context and should not themselves be rated. All fields are required for each Unrated post, but feel free to use default values (None for strings, 0 for integers) for invalid inputs. Your response should be a YAML code block and nothing else.
-- Context is important. If responses are rated above a 5, the question they responded to should also be included. Provide a re-evaluation if necessary.
+- Context is important. Always provide a usefulness Rating of 5 or higher if a post generates useful replies – posts below 5 get hidden and preserving context is crucial so the remaining posts read naturally.
 - Chatlogs and benchmarks are beneficial for other users and should be rated high enough to be included in the recap, especially if they include the model name.
-- Do not penalize posts for having attached images, as they may be relevant to the discussion despite the caption.
 - This is a 4chan thread, so do not lower the Rating due to harsh language.
 - Rate with discernment, considering the overall quality and value of the post to the discussion.
 </message>
