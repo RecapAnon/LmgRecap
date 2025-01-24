@@ -215,7 +215,7 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
         globalLogger.LogError e.Message
         Error e.Message
 
-let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0);
+let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
 let session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
 
 let imageToOnnx (imageBytes: byte array) (size: int) =
@@ -576,6 +576,15 @@ type Phi3Model =
       Processor: MultiModalProcessor
       TokenizerStream: TokenizerStream }
 
+    static member Empty() =
+        { Path = ""
+          SystemPrompt = ""
+          UserPrompt = ""
+          FullPrompt = ""
+          Model = null
+          Processor = null
+          TokenizerStream = null }
+
     static member New() =
         let path = @"D:\_models\Phi-3-vision-128k-instruct-onnx-cuda\cuda-int4-rtn-block-32"
 
@@ -618,7 +627,7 @@ let captionNodePhi3 phi3Model imagePath =
         response <- response.Append(lastElement)
 
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", response)
-    Some (response.ToString().Trim())
+    Some(response.ToString().Trim())
 
 let captionNodeApi url =
     let chat =
@@ -679,7 +688,10 @@ let captionNode (driver: FirefoxDriver) phi3Model node =
     | _ -> node
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
-    let phi3Model = Phi3Model.New()
+    let phi3Model =
+        match appSettings.CaptionMethod with
+        | CaptionMethod.Onnx -> Phi3Model.New()
+        | _ -> Phi3Model.Empty()
 
     driver
         .Navigate()
