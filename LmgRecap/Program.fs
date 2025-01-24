@@ -1223,8 +1223,9 @@ let recap threadNumber =
 
 let monitorThread threadNumber =
     let driver = new FirefoxDriver(options)
+
     while true do
-        let mutable builder =
+        let builder =
             threadNumber
             |> createRecapBuilder
             |> loadRecapFromSaveFile
@@ -1248,16 +1249,22 @@ let monitorThread threadNumber =
         globalLogger.LogInformation
             $"Monitoring thread {threadNumber} - Total Posts: {totalPosts}, Unrated Posts: {unratedPosts}, Unrated Chains: {unratedChains}"
 
-        if unratedPosts > 50 then
-            builder <- builder |> rateMultiple recapPluginFunctions |> saveRecap
-
-        if unratedChains > 20 && unratedPosts < 50 then
-            builder <- builder |> rateChains recapPluginFunctions |> saveRecap
-
-        if totalPosts > 300 then
-            builder <- builder |> describe recapPluginFunctions |> saveRecap
-
-        builder |> recapToText |> printfn "%s"
+        builder
+        |> (if unratedPosts > 50 then
+                rateMultiple recapPluginFunctions
+            else
+                id)
+        |> (if unratedChains > 20 && unratedPosts < 50 then
+                rateChains recapPluginFunctions
+            else
+                id)
+        |> (if totalPosts > 300 then
+                describe recapPluginFunctions
+            else
+                id)
+        |> saveRecap
+        |> recapToText
+        |> printfn "%s"
 
         if Environment.OSVersion.Platform = PlatformID.Win32NT then
             Console.Beep()
