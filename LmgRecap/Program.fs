@@ -647,44 +647,50 @@ let captionNodeApi url =
 
     Some result.Content
 
-let captionNode (driver: FirefoxDriver) phi3Model node =
-    let mutable caption = node.caption
+let downloadImage (driver: FirefoxDriver) (url: string) =
+    let downloadLink =
+        driver.FindElement(By.CssSelector($"a.fa-download[href='https://i.4cdn.org/g/{url}']"))
 
+    downloadLink.Click()
+    Threading.Thread.Sleep(4000)
+    Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
+
+let identifyNode (path: string) node =
+    if
+        path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+        || path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+    then
+        let bytes = File.ReadAllBytes(path)
+        let label, confidence = identify bytes
+
+        { node with
+            label = Some label
+            confidence = Some confidence }
+    else
+        node
+
+let tryCaptionIdentify (driver: FirefoxDriver) (phi3Model) (node) =
+    let url = $"https://i.4cdn.org/g/{node.filename.Value}"
+    let path = downloadImage driver url
+
+    try
+        match appSettings.CaptionMethod with
+        | CaptionMethod.Onnx -> captionNodePhi3 phi3Model path
+        | CaptionMethod.Api -> captionNodeApi url
+        | _ -> node.caption
+        |> fun caption -> { node with caption = caption }
+        |> identifyNode path
+    finally
+        File.Delete(path)
+
+let captionNode (driver: FirefoxDriver) phi3Model node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
     |> Seq.iter (fun f -> File.Delete(f))
 
-    let downloadImageAsByteArray (url: string) =
-        let downloadLink =
-            driver.FindElement(By.CssSelector($"a.fa-download[href='https://i.4cdn.org/g/{url}']"))
-
-        downloadLink.Click()
-        Threading.Thread.Sleep(4000)
-        let path = Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
-
-        caption <-
-            match appSettings.CaptionMethod with
-            | CaptionMethod.Onnx -> captionNodePhi3 phi3Model path
-            | CaptionMethod.Api -> captionNodeApi $"https://i.4cdn.org/g/{url}"
-            | _ -> caption
-
-        let bytes = File.ReadAllBytes(path)
-        File.Delete(path)
-        bytes
-
-    let doStuff () =
-        let label, confidence = node.filename.Value |> downloadImageAsByteArray |> identify
-
-        { node with
-            caption = caption
-            label = Some label
-            confidence = Some confidence }
-
-    match
-        node.filename.IsSome
-        && node.caption.IsNone
-        && (node.filename.Value.Contains(".jpg") || node.filename.Value.Contains(".png"))
-    with
-    | true -> tryWrapper doStuff () |> Result.defaultValue node
+    match node.filename, node.caption with
+    | Some _, None ->
+        tryWrapper (tryCaptionIdentify driver phi3Model) node
+        |> Result.defaultValue node
     | _ -> node
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
@@ -704,7 +710,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             builder.Chains
             |> Array.map (fun chain ->
                 { chain with
-                    Nodes = chain.Nodes |> Array.map (fun node -> captionNode driver phi3Model node) }) }
+                    Nodes = chain.Nodes |> Array.map (captionNode driver phi3Model) }) }
 
 let getIncludedNodes alwaysAddOp rating chain =
     let nodes = new List<ChainNode>()
