@@ -649,7 +649,7 @@ let captionNodeApi url =
 
 let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
-        driver.FindElement(By.CssSelector($"a.fa-download[href='https://i.4cdn.org/g/{url}']"))
+        driver.FindElement(By.CssSelector($"a.fa-download[href='{url}']"))
 
     downloadLink.Click()
     Threading.Thread.Sleep(4000)
