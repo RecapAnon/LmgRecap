@@ -215,9 +215,6 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
         globalLogger.LogError e.Message
         Error e.Message
 
-let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
-let session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
-
 let imageToOnnx (imageBytes: byte array) (size: int) =
     use stream = new MemoryStream(imageBytes)
     use image = Image.Load<Rgb24>(stream)
@@ -264,7 +261,7 @@ let imageToOnnx (imageBytes: byte array) (size: int) =
 
     tensor
 
-let identify (imageBytes: byte array) =
+let identify (session: InferenceSession) (imageBytes: byte array) =
     let tensor = imageToOnnx imageBytes 512
     let inputs = [ NamedOnnxValue.CreateFromTensor("inputs", tensor) ]
     let results = session.Run(inputs)
@@ -655,13 +652,13 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
     Threading.Thread.Sleep(4000)
     Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
 
-let identifyNode (path: string) node =
+let identifyNode session (path: string) node =
     if
         path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
         || path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
     then
         let bytes = File.ReadAllBytes(path)
-        let label, confidence = identify bytes
+        let label, confidence = identify session bytes
 
         { node with
             label = Some label
@@ -669,7 +666,7 @@ let identifyNode (path: string) node =
     else
         node
 
-let tryCaptionIdentify (driver: FirefoxDriver) (phi3Model) (node) =
+let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3Model) (node) =
     let url = $"https://i.4cdn.org/g/{node.filename.Value}"
     let path = downloadImage driver url
 
@@ -679,21 +676,24 @@ let tryCaptionIdentify (driver: FirefoxDriver) (phi3Model) (node) =
         | CaptionMethod.Api -> captionNodeApi url
         | _ -> node.caption
         |> fun caption -> { node with caption = caption }
-        |> identifyNode path
+        |> identifyNode session path
     finally
         File.Delete(path)
 
-let captionNode (driver: FirefoxDriver) phi3Model node =
+let captionNode (driver: FirefoxDriver) session phi3Model node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
     |> Seq.iter (fun f -> File.Delete(f))
 
     match node.filename, node.caption with
     | Some _, None ->
-        tryWrapper (tryCaptionIdentify driver phi3Model) node
+        tryWrapper (tryCaptionIdentify driver session phi3Model) node
         |> Result.defaultValue node
     | _ -> node
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
+    let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
+    let session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
+
     let phi3Model =
         match appSettings.CaptionMethod with
         | CaptionMethod.Onnx -> Phi3Model.New()
@@ -710,7 +710,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             builder.Chains
             |> Array.map (fun chain ->
                 { chain with
-                    Nodes = chain.Nodes |> Array.map (captionNode driver phi3Model) }) }
+                    Nodes = chain.Nodes |> Array.map (captionNode driver session phi3Model) }) }
 
 let getIncludedNodes alwaysAddOp rating chain =
     let nodes = new List<ChainNode>()
