@@ -1107,6 +1107,76 @@ let printRecapHtml builder =
     File.WriteAllText($"recap-{builder.ThreadId}.html", sb.ToString())
     builder
 
+let generateHtmlTable (file1Path: string) (file2Path: string) =
+    let loadAndPrepareNodes (filePath: string) =
+        filePath
+        |> File.ReadAllText
+        |> JsonSerializer.Deserialize<RecapBuilder>
+        |> fun recapBuilder ->
+            recapBuilder.Chains
+            |> Array.collect (fun c -> c.Nodes)
+            |> Array.append (recapBuilder.Recaps |> Array.collect (fun c -> c.Nodes))
+            |> Array.filter (fun n -> n.filename.IsSome && n.caption.IsSome)
+            |> Array.sortBy (fun n -> n.filename.Value)
+
+    let nodes1 = loadAndPrepareNodes file1Path
+    let nodes2 = loadAndPrepareNodes file2Path
+
+    let pairedNodes =
+        nodes1
+        |> Array.zip nodes2
+        |> Array.choose (fun (n1, n2) ->
+            if n1.filename = n2.filename then
+                Some(n1.caption.Value, n1.filename.Value, n2.caption.Value)
+            else
+                None)
+
+    let html =
+        let tableRow (c1, f, c2) =
+            $"<tr><td class=\"text-col\"><pre>{c1}</pre></td><td class=\"image-col\"><img src='https://i.4cdn.org/g/{f}'></td><td class=\"text-col\"><pre>{c2}</pre></td></tr>"
+
+        let tableBody = pairedNodes |> Array.map tableRow |> String.concat ""
+
+        $"<html>
+            <head>
+                <style>
+                    table {{
+                        width: 100%%;
+                        table-layout: fixed;
+                    }}
+                    td {{
+                        padding: 10px;
+                        vertical-align: top;
+                    }}
+                    .text-col {{
+                        width: 40%%;
+                        word-wrap: break-word;
+                    }}
+                    .image-col {{
+                        width: 20%%;
+                    }}
+                    img {{
+                        max-width: 100%%;
+                        height: auto;
+                        max-height: 250px;
+                        display: block;
+                        margin: 0 auto;
+                    }}
+                    pre {{
+                        white-space: pre-wrap;
+                    }}
+                </style>
+            </head>
+            <body>
+                <table border='1'>
+                    <tr><th>First Caption</th><th>Image</th><th>Second Caption</th></tr>
+                    {tableBody}
+                </table>
+            </body>
+        </html>"
+
+    File.WriteAllText("output.html", html)
+
 let saveRecap builder =
     let json = JsonSerializer.Serialize(builder)
     File.WriteAllText($"{builder.ThreadId}.recap.json", json)
@@ -1130,8 +1200,6 @@ let overrideRating threadNumber postNumber rating =
     |> recapToText
     |> printfn "%s"
     |> ignore
-
-    Task.CompletedTask
 
 let overridePostRating threadNumber postNumber rating =
     threadNumber
@@ -1157,8 +1225,6 @@ let overridePostRating threadNumber postNumber rating =
     |> printfn "%s"
     |> ignore
 
-    Task.CompletedTask
-
 let dropSummary threadNumber postNumber =
     threadNumber
     |> createRecapBuilder
@@ -1177,8 +1243,6 @@ let dropSummary threadNumber postNumber =
     |> recapToText
     |> printfn "%s"
     |> ignore
-
-    Task.CompletedTask
 
 let threadSummaryRecap threadNumber =
     threadNumber
@@ -1310,22 +1374,24 @@ let main argv =
     let argument2 = Argument<string> "filename"
     let argument3 = Argument<int64> "postNumber"
     let argument4 = Argument<int> "rating"
+    let argument5 = Argument<string> "filename1"
+    let argument6 = Argument<string> "filename2"
 
     let command1 =
         CommandLine.Command "recap"
         |> addArgument argument1
-        |> setHandler recap argument1
+        |> setHandler1 recap argument1
 
     let command2 =
         CommandLine.Command "load-memories"
         |> addAlias "mem"
         |> addArgument argument2
-        |> setHandler importMarkdownFileIntoMemories argument2
+        |> setHandler1 importMarkdownFileIntoMemories argument2
 
     let command3 =
         CommandLine.Command "print-recap"
         |> addArgument argument1
-        |> setHandler printRecapOnly argument1
+        |> setHandler1 printRecapOnly argument1
 
     let command4 =
         CommandLine.Command "override-rating"
@@ -1350,17 +1416,23 @@ let main argv =
     let command7 =
         CommandLine.Command "thread-summary"
         |> addArgument argument1
-        |> setHandler threadSummaryRecap argument1
+        |> setHandler1 threadSummaryRecap argument1
 
     let command8 =
         CommandLine.Command "generate-newscaster-script"
         |> addArgument argument1
-        |> setHandler generateNewscasterScript argument1
+        |> setHandler1 generateNewscasterScript argument1
 
     let command9 =
         CommandLine.Command "monitor"
         |> addArgument argument1
-        |> setHandler monitorThread argument1
+        |> setHandler1 monitorThread argument1
+
+    let command10 =
+        CommandLine.Command "table"
+        |> addArgument argument5
+        |> addArgument argument6
+        |> setHandler2 generateHtmlTable argument5 argument6
 
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
@@ -1381,4 +1453,5 @@ let main argv =
     |> addCommand command7
     |> addCommand command8
     |> addCommand command9
+    |> addCommand command10
     |> invoke argv

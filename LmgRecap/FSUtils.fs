@@ -27,15 +27,15 @@ let addArgument argument (command: Command) =
     command.AddArgument argument
     command
 
-let setHandler (handler: string -> unit) argument (command: Command) =
+let setHandler1<'A> (handler: 'A -> unit) argument (command: Command) =
     command.SetHandler(handler, argument)
     command
 
-let setHandler2 handler argument1 argument2 (command: Command) =
+let setHandler2<'A, 'B> (handler: 'A -> 'B -> unit) argument1 argument2 (command: Command) =
     command.SetHandler(handler, argument1, argument2)
     command
 
-let setHandler3 handler argument1 argument2 argument3 (command: Command) =
+let setHandler3<'A, 'B, 'C> (handler: 'A -> 'B -> 'C -> unit) argument1 argument2 argument3 (command: Command) =
     command.SetHandler(handler, argument1, argument2, argument3)
     command
 
