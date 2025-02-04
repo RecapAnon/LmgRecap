@@ -1154,8 +1154,17 @@ let generateHtmlTable (file1Path: string) (file2Path: string) =
                 None)
 
     let html =
+        let mediaTag (f: string) =
+            let ext = Path.GetExtension(f).ToLower()
+
+            match ext with
+            | ".mp4"
+            | ".webm" ->
+                $"""<video><source src="https://i.4cdn.org/g/{f}" type="video/{ext.Replace(".", "")}"></video>"""
+            | _ -> $"<img src=\"https://i.4cdn.org/g/{f}>\""
+
         let tableRow (c1, f, c2) =
-            $"<tr><td class=\"text-col\"><pre>{c1}</pre></td><td class=\"image-col\"><img src='https://i.4cdn.org/g/{f}'></td><td class=\"text-col\"><pre>{c2}</pre></td></tr>"
+            $"<tr><td class=\"text-col\"><pre>{c1}</pre></td><td class=\"image-col\">{mediaTag f}</td><td class=\"text-col\"><pre>{c2}</pre></td></tr>"
 
         let tableBody = pairedNodes |> Array.map tableRow |> String.concat ""
 
