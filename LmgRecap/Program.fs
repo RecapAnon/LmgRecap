@@ -627,7 +627,17 @@ let captionNodePhi3 phi3Model imagePath =
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", response)
     Some(response.ToString().Trim())
 
-let captionNodeApi url (file: string) =
+let getMimeType (file: string) =
+    let extension = Path.GetExtension(file).ToLower()
+
+    match extension with
+    | ".jpg"
+    | ".jpeg" -> "image/jpeg"
+    | ".png" -> "image/png"
+    | ".gif" -> "image/gif"
+    | _ -> "image/jpeg"
+
+let captionNodeApi (file: string) =
     let chat =
         kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
 
@@ -637,12 +647,9 @@ let captionNodeApi url (file: string) =
     let message = new ChatMessageContentItemCollection()
     message.Add(new TextContent("Describe what is in the image."))
 
-    if file.EndsWith(".mp4") || file.EndsWith(".webm") then
-        let bytes = getMiddleFrameBytes file
-        message.Add(new ImageContent(bytes, "image/jpg"))
-    else
-        message.Add(new ImageContent(new Uri(url)))
-
+    let bytes = File.ReadAllBytes(file)
+    let mimeType = getMimeType file
+    message.Add(new ImageContent(bytes, mimeType))
     history.AddUserMessage(message)
 
     let result = chat.GetChatMessageContentAsync(history).Result
@@ -659,32 +666,41 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
 
 let identifyNode session (path: string) node =
-    if
-        path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-        || path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-    then
-        let bytes = File.ReadAllBytes(path)
-        let label, confidence = identify session bytes
+    let bytes = File.ReadAllBytes(path)
+    let label, confidence = identify session bytes
 
-        { node with
-            label = Some label
-            confidence = Some confidence }
-    else
-        node
+    { node with
+        label = Some label
+        confidence = Some confidence }
 
 let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3Model) (node) =
     let url = $"https://i.4cdn.org/g/{node.filename.Value}"
-    let path = downloadImage driver url
+    let downloadedPath = downloadImage driver url
+
+    let processedPath =
+        if
+            downloadedPath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+            || downloadedPath.EndsWith(".webm", StringComparison.OrdinalIgnoreCase)
+        then
+            let bytes = getMiddleFrameBytes downloadedPath
+            let tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg")
+            File.WriteAllBytes(tempPath, bytes)
+            tempPath
+        else
+            downloadedPath
 
     try
         match appSettings.CaptionMethod with
-        | CaptionMethod.Onnx -> captionNodePhi3 phi3Model path
-        | CaptionMethod.Api -> captionNodeApi url path
+        | CaptionMethod.Onnx -> captionNodePhi3 phi3Model processedPath
+        | CaptionMethod.Api -> captionNodeApi processedPath
         | _ -> node.caption
         |> fun caption -> { node with caption = caption }
-        |> identifyNode session path
+        |> identifyNode session processedPath
     finally
-        File.Delete(path)
+        File.Delete(downloadedPath)
+
+        if processedPath <> downloadedPath then
+            File.Delete(processedPath)
 
 let captionNode (driver: FirefoxDriver) session phi3Model node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
