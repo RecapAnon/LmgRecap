@@ -33,6 +33,7 @@ open Python.Runtime
 open SixLabors.ImageSharp
 open SixLabors.ImageSharp.PixelFormats
 open SixLabors.ImageSharp.Processing
+open VideoFrameExtractor
 open YamlDotNet.Core
 open YamlDotNet.Serialization
 open YamlDotNet.Serialization.NamingConventions
@@ -626,7 +627,7 @@ let captionNodePhi3 phi3Model imagePath =
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", response)
     Some(response.ToString().Trim())
 
-let captionNodeApi url =
+let captionNodeApi url (file: string) =
     let chat =
         kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
 
@@ -635,7 +636,12 @@ let captionNodeApi url =
 
     let message = new ChatMessageContentItemCollection()
     message.Add(new TextContent("Describe what is in the image."))
-    message.Add(new ImageContent(new Uri(url)))
+
+    if file.EndsWith(".mp4") || file.EndsWith(".webm") then
+        let bytes = getMiddleFrameBytes file
+        message.Add(new ImageContent(bytes, "image/jpg"))
+    else
+        message.Add(new ImageContent(new Uri(url)))
 
     history.AddUserMessage(message)
 
@@ -673,7 +679,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3
     try
         match appSettings.CaptionMethod with
         | CaptionMethod.Onnx -> captionNodePhi3 phi3Model path
-        | CaptionMethod.Api -> captionNodeApi url
+        | CaptionMethod.Api -> captionNodeApi url path
         | _ -> node.caption
         |> fun caption -> { node with caption = caption }
         |> identifyNode session path

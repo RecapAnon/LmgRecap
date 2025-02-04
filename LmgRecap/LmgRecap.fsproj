@@ -56,6 +56,7 @@
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Compile Include="VideoFrameExtractor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
