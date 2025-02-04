@@ -1161,7 +1161,7 @@ let generateHtmlTable (file1Path: string) (file2Path: string) =
             | ".mp4"
             | ".webm" ->
                 $"""<video><source src="https://i.4cdn.org/g/{f}" type="video/{ext.Replace(".", "")}"></video>"""
-            | _ -> $"<img src=\"https://i.4cdn.org/g/{f}>\""
+            | _ -> $"<img src=\"https://i.4cdn.org/g/{f}\">"
 
         let tableRow (c1, f, c2) =
             $"<tr><td class=\"text-col\"><pre>{c1}</pre></td><td class=\"image-col\">{mediaTag f}</td><td class=\"text-col\"><pre>{c2}</pre></td></tr>"
@@ -1186,7 +1186,7 @@ let generateHtmlTable (file1Path: string) (file2Path: string) =
                     .image-col {{
                         width: 20%%;
                     }}
-                    img {{
+                    img, video {{
                         max-width: 100%%;
                         height: auto;
                         max-height: 250px;
