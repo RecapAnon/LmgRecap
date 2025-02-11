@@ -714,7 +714,7 @@ let captionNode (driver: FirefoxDriver) session phi3Model node =
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
     let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
-    let session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
+    use session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
 
     let phi3Model =
         match appSettings.CaptionMethod with
@@ -1335,59 +1335,60 @@ let recap threadNumber =
     driver.Quit()
 
 let monitorThread threadNumber =
-    let driver = new FirefoxDriver(options)
+    use driver = new FirefoxDriver(options)
 
-    while true do
-        let builder =
-            threadNumber
-            |> createRecapBuilder
-            |> loadRecapFromSaveFile
-            |> fetchThreadJson driver
+    try
+        while true do
+            let builder =
+                threadNumber
+                |> createRecapBuilder
+                |> loadRecapFromSaveFile
+                |> fetchThreadJson driver
+                |> saveRecap
+                |> caption driver
+                |> saveRecap
+                |> categorize
+
+            let totalPosts = builder.Chains |> Seq.collect (fun c -> c.Nodes) |> Seq.length
+
+            let unratedChains =
+                builder.Chains |> Seq.filter (fun c -> c.Rating = -1) |> Seq.length
+
+            let unratedPosts =
+                builder.Chains
+                |> Seq.collect (fun c -> c.Nodes)
+                |> Seq.filter (fun node -> node.rating = -1 && node.filtered = false)
+                |> Seq.length
+
+            globalLogger.LogInformation
+                $"Monitoring thread {threadNumber} - Total Posts: {totalPosts}, Unrated Posts: {unratedPosts}, Unrated Chains: {unratedChains}"
+
+            builder
+            |> (if unratedPosts > 20 then
+                    rateMultiple recapPluginFunctions
+                else
+                    id)
+            |> (if unratedChains > 30 && unratedPosts < 50 then
+                    rateChains recapPluginFunctions
+                else
+                    id)
+            |> (if totalPosts > 300 then
+                    describe recapPluginFunctions
+                else
+                    id)
             |> saveRecap
-            |> caption driver
-            |> saveRecap
-            |> categorize
+            |> recapToText
+            |> printfn "%s"
 
-        let totalPosts = builder.Chains |> Seq.collect (fun c -> c.Nodes) |> Seq.length
-
-        let unratedChains =
-            builder.Chains |> Seq.filter (fun c -> c.Rating = -1) |> Seq.length
-
-        let unratedPosts =
-            builder.Chains
-            |> Seq.collect (fun c -> c.Nodes)
-            |> Seq.filter (fun node -> node.rating = -1 && node.filtered = false)
-            |> Seq.length
-
-        globalLogger.LogInformation
-            $"Monitoring thread {threadNumber} - Total Posts: {totalPosts}, Unrated Posts: {unratedPosts}, Unrated Chains: {unratedChains}"
-
-        builder
-        |> (if unratedPosts > 50 then
-                rateMultiple recapPluginFunctions
+            if Environment.OSVersion.Platform = PlatformID.Win32NT then
+                Console.Beep()
             else
-                id)
-        |> (if unratedChains > 20 && unratedPosts < 50 then
-                rateChains recapPluginFunctions
-            else
-                id)
-        |> (if totalPosts > 300 then
-                describe recapPluginFunctions
-            else
-                id)
-        |> saveRecap
-        |> recapToText
-        |> printfn "%s"
+                printf "\a"
 
-        if Environment.OSVersion.Platform = PlatformID.Win32NT then
-            Console.Beep()
-        else
-            printf "\a"
-
-        Thread.Sleep(300000)
-
-    driver.Close()
-    driver.Quit()
+            Thread.Sleep(1800000)
+    finally
+        driver.Close()
+        driver.Quit()
 
 [<EntryPoint>]
 let main argv =
