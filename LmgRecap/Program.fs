@@ -44,7 +44,8 @@ type CaptionMethod =
     | Api = 2
 
 type Selenium =
-    { Downloads: string
+    { Headless: bool
+      Downloads: string
       Profile: string
       UserAgent: string }
 
@@ -372,19 +373,6 @@ let loadRecapFromSaveFile builder =
     match File.Exists(filename) with
     | false -> builder
     | true -> filename |> File.ReadAllText |> JsonSerializer.Deserialize<RecapBuilder>
-
-let options = new FirefoxOptions()
-options.AddArgument("-headless")
-options.Profile <- new FirefoxProfile(appSettings.Selenium.Profile)
-Directory.CreateDirectory(appSettings.Selenium.Downloads) |> ignore
-options.SetPreference("browser.download.dir", appSettings.Selenium.Downloads)
-options.SetPreference("browser.download.folderList", 2)
-options.SetPreference("browser.download.manager.showWhenStarting", false)
-options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/jpeg")
-options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/png")
-options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/gif")
-options.SetPreference("devtools.jsonview.enabled", false)
-options.SetPreference("general.useragent.override", appSettings.Selenium.UserAgent)
 
 let mapPostToChainNode post =
     { id = post.no
@@ -1307,8 +1295,24 @@ let printRecapOnly threadNumber =
     |> printfn "%s"
     |> ignore
 
+let buildWebDriver () =
+    let options = new FirefoxOptions()
+    if appSettings.Selenium.Headless then
+        options.AddArgument("-headless")
+    options.Profile <- new FirefoxProfile(appSettings.Selenium.Profile)
+    Directory.CreateDirectory(appSettings.Selenium.Downloads) |> ignore
+    options.SetPreference("browser.download.dir", appSettings.Selenium.Downloads)
+    options.SetPreference("browser.download.folderList", 2)
+    options.SetPreference("browser.download.manager.showWhenStarting", false)
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/jpeg")
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/png")
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/gif")
+    options.SetPreference("devtools.jsonview.enabled", false)
+    options.SetPreference("general.useragent.override", appSettings.Selenium.UserAgent)
+    new FirefoxDriver(options)
+
 let recap threadNumber =
-    let driver = new FirefoxDriver(options)
+    let driver = buildWebDriver()
     let timer = new Stopwatch()
     timer.Start()
 
@@ -1335,7 +1339,7 @@ let recap threadNumber =
     driver.Quit()
 
 let monitorThread threadNumber =
-    use driver = new FirefoxDriver(options)
+    let driver = buildWebDriver()
 
     try
         while true do
@@ -1471,6 +1475,7 @@ let main argv =
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
     |> addGlobalOption (CommandLine.Option<int> "--MaxReplies")
     |> addGlobalOption (CommandLine.Option<int> "--MaxLength")
+    |> addGlobalOption (CommandLine.Option<bool> "--Selenium:Headless")
     |> addGlobalOption (CommandLine.Option<Microsoft.Extensions.Logging.LogLevel> "--Logging:LogLevel:Default")
     |> addGlobalOption (CommandLine.Option<bool> "--RateMultiple")
     |> addGlobalOption (CommandLine.Option<bool> "--RateChain")
