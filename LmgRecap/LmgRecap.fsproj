@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,14 +7,12 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <UserSecretsId>5ec4b44a-df7e-42d0-b0b2-1234c28d32c2</UserSecretsId>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Include="FSUtils.fs" />
     <Content Include="SortGlossary.fsx" />
     <Content Include="Properties/launchSettings.json" />
     <Content Include="recap.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</Content>
+    </Content>
     <Content Include="RecreateChromaDb.py">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -52,14 +49,16 @@
     <Content Include="plugins\RecapPlugin\NewscasterScript\skprompt.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Logging.fs" />
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="FSUtils.fs" />
+    <Compile Include="Logging.fs" />
     <Compile Include="VideoFrameExtractor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="9.0.3" />
@@ -77,16 +76,16 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.1" />
     <PackageReference Include="pythonnet" Version="3.0.5" />
     <PackageReference Include="Selenium.Firefox.WebDriver" Version="0.27.0" />
-    <PackageReference Include="Selenium.WebDriver" Version="4.29.0" />
+    <PackageReference Include="Selenium.WebDriver" Version="4.31.0" />
+    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="135.0.7049.9500" />
+    <PackageReference Include="SeleniumStealth.NET" Version="1.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="9.0.201" />
   </ItemGroup>
-
 </Project>

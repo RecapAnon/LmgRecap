@@ -28,8 +28,10 @@ open Microsoft.SemanticKernel.Memory
 open Microsoft.SemanticKernel.Plugins.Memory
 open OpenAI
 open OpenQA.Selenium
-open OpenQA.Selenium.Firefox
+open OpenQA.Selenium.Chrome
 open Python.Runtime
+open SeleniumStealth.NET.Clients
+open SeleniumStealth.NET.Clients.Extensions
 open SixLabors.ImageSharp
 open SixLabors.ImageSharp.PixelFormats
 open SixLabors.ImageSharp.Processing
@@ -42,6 +44,10 @@ type CaptionMethod =
     | Disabled = 0
     | Onnx = 1
     | Api = 2
+
+type Website =
+    | FourChan = 0
+    | GayChan = 1
 
 type Selenium =
     { Headless: bool
@@ -75,7 +81,8 @@ type AppSettings =
       Selenium: Selenium
       Filters: string[]
       Logging: LoggingConfig
-      CaptionMethod: CaptionMethod }
+      CaptionMethod: CaptionMethod
+      Website: Website }
 
 type MyRedirectingHandler(appSettings) =
     inherit DelegatingHandler(new HttpClientHandler())
@@ -102,6 +109,35 @@ type Post =
       now: string }
 
 type Thread = { posts: Post[] }
+
+type GayImage =
+    { spoiler: bool
+      audio: bool
+      video: bool
+      file_type: int
+      thumb_type: int
+      length: int
+      dims: int array
+      size: int
+      artist: string
+      title: string
+      md5: string
+      sha1: string
+      name: string }
+
+type GayPost =
+    { editing: bool
+      sage: bool
+      auth: int
+      id: int64
+      time: int64
+      body: string
+      flag: string
+      name: string
+      trip: string
+      image: GayImage option }
+
+type GayThread = { posts: GayPost[] }
 
 type CaptionResponse = { content: string }
 
@@ -395,10 +431,49 @@ let mapPostToChainNode post =
       label = None
       confidence = None }
 
+let mapGayPostToChainNode (post: GayPost) =
+    let getFileExtension (fileType: int) =
+        match fileType with
+        | 0 -> ".jpg"
+        | 1 -> ".png"
+        | 2 -> ".gif"
+        | 3 -> ".webm"
+        | 6 -> ".mp4"
+        | _ -> ""
+
+    { id = post.id
+      timestamp = post.time
+      now =
+        DateTimeOffset
+            .FromUnixTimeSeconds(post.time)
+            .UtcDateTime.ToString("dd MMM yyyy (ddd) HH:mm:ss")
+      filtered = appSettings.Filters.Any(fun filter -> Regex.IsMatch(post.body.ToLower(), filter))
+      links = [||]
+      replies = [||]
+      ratings = [||]
+      comment = ""
+      unsanitized = post.body
+      context = None
+      rating = -1
+      reasoning = ""
+      filename =
+        match post.image with
+        | Some image -> Some(image.sha1 + getFileExtension image.file_type)
+        | None -> None
+      caption = None
+      label = None
+      confidence = None }
+
 let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
+    let quoteIndicator =
+        match appSettings.Website with
+        | Website.FourChan -> "&gt;&gt;"
+        | Website.GayChan -> @"\u003E\u003E"
+        | _ -> failwith "Invalid Website Selection"
+
     { node with
         links =
-            Regex.Matches(node.unsanitized, @"&gt;&gt;(\d{9})")
+            Regex.Matches(node.unsanitized, quoteIndicator + @"(\d{" + node.id.ToString().Length.ToString() + "})")
             |> Seq.map (fun m -> m.Groups[1].ToString() |> Int64.Parse)
             |> Seq.filter (fun id -> chainmap.ContainsKey id)
             |> Array.ofSeq
@@ -408,7 +483,7 @@ let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
             |> Seq.map (fun p -> p.id)
             |> Seq.toArray }
 
-let sanitize (driver: FirefoxDriver) node =
+let sanitize (driver: ChromeDriver) node =
     let fetchTitleFromUrlAsync (url: string) () : string =
         driver.Navigate().GoToUrl url
         Thread.Sleep(10 * 1000)
@@ -431,24 +506,45 @@ let sanitize (driver: FirefoxDriver) node =
     | true ->
         { node with
             comment =
-                node.unsanitized.Replace("<br>", "\n")
-                |> stripTags
-                |> HttpUtility.HtmlDecode
-                |> fun c ->
-                    Regex
-                        .Replace(c, @">>\d{9}", String.Empty)
-                        .Replace("https://arxiv.org/pdf", "https://arxiv.org/abs")
-                        .Trim()
-                |> fun c ->
-                    (Regex.Matches(
-                        c,
-                        @"https:\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?"
-                     )
-                     |> Seq.map (fun m ->
-                         m.Value,
-                         tryWrapper (fetchTitleFromUrlAsync m.Value) ()
-                         |> Result.defaultValue "Error fetching title")
-                     |> Seq.fold (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})")) c) }
+                (match appSettings.Website with
+                 | Website.FourChan ->
+                     node.unsanitized.Replace("<br>", "\n")
+                     |> stripTags
+                     |> HttpUtility.HtmlDecode
+                     |> fun c ->
+                         Regex
+                             .Replace(c, @">>\d{" + node.id.ToString().Length.ToString() + "}", String.Empty)
+                             .Replace("https://arxiv.org/pdf", "https://arxiv.org/abs")
+                             .Trim()
+                     |> fun c ->
+                         (Regex.Matches(
+                             c,
+                             @"https:\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?"
+                          )
+                          |> Seq.map (fun m ->
+                              m.Value,
+                              tryWrapper (fetchTitleFromUrlAsync m.Value) ()
+                              |> Result.defaultValue "Error fetching title")
+                          |> Seq.fold
+                              (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})"))
+                              c)
+                 | Website.GayChan ->
+                     node.unsanitized
+                     |> HttpUtility.HtmlDecode
+                     |> fun c -> c.Replace("https://arxiv.org/pdf", "https://arxiv.org/abs").Trim()
+                     |> fun c ->
+                         (Regex.Matches(
+                             c,
+                             @"https:\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?"
+                          )
+                          |> Seq.map (fun m ->
+                              m.Value,
+                              tryWrapper (fetchTitleFromUrlAsync m.Value) ()
+                              |> Result.defaultValue "Error fetching title")
+                          |> Seq.fold
+                              (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})"))
+                              c)
+                 | _ -> failwith "Invalid Website Selection") }
     | _ -> node
 
 let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
@@ -494,7 +590,7 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
         Chains = chains
         Recaps = recaps }
 
-let fetchThreadJson (driver: FirefoxDriver) builder =
+let fetchThreadJson (driver: ChromeDriver) builder =
     let cnm = new Dictionary<int64, ChainNode>()
 
     let populateChainNodeDictionary s =
@@ -513,10 +609,6 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
         | true -> 0L
         | false -> cnm.Values |> Seq.maxBy (fun n -> n.id) |> (fun n -> n.id)
 
-    driver
-        .Navigate()
-        .GoToUrl($"https://a.4cdn.org/g/thread/{builder.ThreadId}.json")
-
     let updateReferences oldbuilder =
         { oldbuilder with
             Chains =
@@ -525,11 +617,26 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
                     { chain with
                         Nodes = chain.Nodes |> Array.map (buildReferences cnm) }) }
 
-    driver.FindElement(By.TagName("html")).Text
-    |> JsonSerializer.Deserialize<Thread>
-    |> fun a -> a.posts[1..]
-    |> Array.filter (fun p -> p.no > maxId)
-    |> Array.map mapPostToChainNode
+    (match appSettings.Website with
+     | Website.FourChan ->
+         driver
+             .Navigate()
+             .GoToUrl($"https://a.4cdn.org/g/thread/{builder.ThreadId}.json")
+
+         driver.FindElement(By.TagName("html")).Text
+         |> JsonSerializer.Deserialize<Thread>
+         |> fun a -> a.posts[1..]
+         |> Array.filter (fun p -> p.no > maxId)
+         |> Array.map mapPostToChainNode
+     | Website.GayChan ->
+         driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
+
+         driver.FindElement(By.Id("post-data")).GetAttribute("textContent")
+         |> JsonSerializer.Deserialize<GayThread>
+         |> fun a -> a.posts
+         |> Array.filter (fun p -> p.id > maxId)
+         |> Array.map mapGayPostToChainNode
+     | _ -> failwith "Invalid Website Selection")
     |> Array.map (sanitize driver)
     |> populateChainNodeDictionary
     |> Array.map (buildReferences cnm)
@@ -645,11 +752,14 @@ let captionNodeApi (file: string) =
 
     Some result.Content
 
-let downloadImage (driver: FirefoxDriver) (url: string) =
+let downloadImage (driver: ChromeDriver) (url: string) =
     let downloadLink =
-        driver.FindElement(By.CssSelector($"a.fa-download[href='{url}']"))
+        match appSettings.Website with
+        | Website.FourChan -> driver.FindElement(By.CssSelector($"a.fa-download[href='{url}']"))
+        | Website.GayChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
+        | _ -> failwith "Invalid Website Selection"
 
-    downloadLink.Click()
+    downloadLink.SendKeys(Keys.Return)
     Threading.Thread.Sleep(4000)
     Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
 
@@ -661,8 +771,13 @@ let identifyNode session (path: string) node =
         label = Some label
         confidence = Some confidence }
 
-let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3Model) (node) =
-    let url = $"https://i.4cdn.org/g/{node.filename.Value}"
+let tryCaptionIdentify (driver: ChromeDriver) (session: InferenceSession) (phi3Model) (node) =
+    let url =
+        match appSettings.Website with
+        | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
+        | Website.GayChan -> $"/assets/images/src/{node.filename.Value}"
+        | _ -> failwith "Invalid Website Selection"
+
     let downloadedPath = downloadImage driver url
 
     let processedPath =
@@ -690,7 +805,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3
         if processedPath <> downloadedPath then
             File.Delete(processedPath)
 
-let captionNode (driver: FirefoxDriver) session phi3Model node =
+let captionNode (driver: ChromeDriver) session phi3Model node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
     |> Seq.iter (fun f -> File.Delete(f))
 
@@ -700,7 +815,7 @@ let captionNode (driver: FirefoxDriver) session phi3Model node =
         |> Result.defaultValue node
     | _ -> node
 
-let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
+let caption (driver: ChromeDriver) (builder: RecapBuilder) =
     let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
     use session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
 
@@ -709,9 +824,13 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
         | CaptionMethod.Onnx -> Phi3Model.New()
         | _ -> Phi3Model.Empty()
 
-    driver
-        .Navigate()
-        .GoToUrl($"https://boards.4chan.org/g/thread/{builder.ThreadId}")
+    match appSettings.Website with
+    | Website.FourChan ->
+        driver
+            .Navigate()
+            .GoToUrl($"https://boards.4chan.org/g/thread/{builder.ThreadId}")
+    | Website.GayChan -> driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
+    | _ -> failwith "Invalid Website Selection"
 
     Threading.Thread.Sleep(4000)
 
@@ -736,6 +855,7 @@ let getIncludedNodes alwaysAddOp rating chain =
     let rec loop j =
         let replies =
             j.replies
+            |> Seq.filter (fun n -> n > j.id)
             |> Seq.filter (fun n -> chainmap.ContainsKey(n))
             |> Seq.sortBy (fun n ->
                 Seq.max (
@@ -986,7 +1106,7 @@ let printRecapHtml builder =
         match String.IsNullOrEmpty(input) with
         | true -> "&nbsp;"
         | false ->
-            let pattern = @">(\d{9})"
+            let pattern = @">(\d{" + builder.ThreadId.ToString().Length.ToString() + "})"
 
             let replacement =
                 @$"<a href=""https://boards.4chan.org/g/thread/{builder.ThreadId}#p$1"" class=""quotelink"">&gt;&gt;$1</a>"
@@ -1296,23 +1416,21 @@ let printRecapOnly threadNumber =
     |> ignore
 
 let buildWebDriver () =
-    let options = new FirefoxOptions()
+    let options = (new ChromeOptions()).ApplyStealth()
+
     if appSettings.Selenium.Headless then
         options.AddArgument("-headless")
-    options.Profile <- new FirefoxProfile(appSettings.Selenium.Profile)
+
     Directory.CreateDirectory(appSettings.Selenium.Downloads) |> ignore
-    options.SetPreference("browser.download.dir", appSettings.Selenium.Downloads)
-    options.SetPreference("browser.download.folderList", 2)
-    options.SetPreference("browser.download.manager.showWhenStarting", false)
-    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/jpeg")
-    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/png")
-    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/gif")
-    options.SetPreference("devtools.jsonview.enabled", false)
-    options.SetPreference("general.useragent.override", appSettings.Selenium.UserAgent)
-    new FirefoxDriver(options)
+    options.AddUserProfilePreference("download.default_directory", appSettings.Selenium.Downloads)
+    options.AddUserProfilePreference("download.prompt_for_download", false)
+    options.AddUserProfilePreference("disable-popup-blocking", "true")
+    options.AddArgument("--start-maximized")
+    options.AddArgument(@"user-data-dir=C:\Users\User\AppData\Local\Google\Chrome\User Data")
+    Stealth.Instantiate(options)
 
 let recap threadNumber =
-    let driver = buildWebDriver()
+    let driver = buildWebDriver ()
     let timer = new Stopwatch()
     timer.Start()
 
@@ -1339,7 +1457,7 @@ let recap threadNumber =
     driver.Quit()
 
 let monitorThread threadNumber =
-    let driver = buildWebDriver()
+    let driver = buildWebDriver ()
 
     try
         while true do
@@ -1481,6 +1599,7 @@ let main argv =
     |> addGlobalOption (CommandLine.Option<bool> "--RateChain")
     |> addGlobalOption (CommandLine.Option<bool> "--Describe")
     |> addGlobalOption (CommandLine.Option<CaptionMethod> "--CaptionMethod")
+    |> addGlobalOption (CommandLine.Option<Website> "--Website")
     |> addCommand command1
     |> addCommand command2
     |> addCommand command3
