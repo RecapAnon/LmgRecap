@@ -46,6 +46,7 @@ type CaptionMethod =
 type Website =
     | FourChan = 0
     | GayChan = 1
+    | EightChan = 2
 
 type Selenium =
     { Headless: bool
@@ -136,6 +137,29 @@ type GayPost =
       image: GayImage option }
 
 type GayThread = { posts: GayPost[] }
+
+type EightFile =
+    { originalName: string
+      path: string
+      thumb: string
+      mime: string
+      size: int
+      width: int option
+      height: int option }
+
+type EightPost =
+    { name: string
+      signedRole: string option
+      email: string option
+      id: string option
+      subject: string option
+      markdown: string
+      message: string
+      postId: int64
+      creation: string
+      files: EightFile array }
+
+type EightThread = { posts: EightPost[] }
 
 type CaptionResponse = { content: string }
 
@@ -429,6 +453,44 @@ let mapPostToChainNode post =
       label = None
       confidence = None }
 
+let mapEightPostToChainNode post =
+    let getUnixTimestamp (datetimeString: string) : int64 =
+        let format = "yyyy-MM-ddTHH:mm:ss.fffZ"
+        match
+            DateTime.TryParseExact(datetimeString, format, null, System.Globalization.DateTimeStyles.AssumeUniversal)
+        with
+        | (true, datetimeObject) ->
+            let epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            int64 (datetimeObject - epoch).TotalSeconds
+        | (false, _) ->
+            failwith "Invalid datetime format"
+
+    let ts = getUnixTimestamp post.creation
+
+    { id = post.postId
+      timestamp = ts
+      now =
+        DateTimeOffset
+            .FromUnixTimeSeconds(ts)
+            .UtcDateTime.ToString("dd MMM yyyy (ddd) HH:mm:ss")
+      filtered = appSettings.Filters.Any(fun filter -> Regex.IsMatch(post.markdown.ToLower(), filter))
+      links = [||]
+      replies = [||]
+      ratings = [||]
+      comment = ""
+      unsanitized = post.markdown
+      context = None
+      rating = -1
+      reasoning = ""
+      filename =
+        if post.files.Length > 0 then
+            Some post.files[0].originalName
+        else
+            None
+      caption = None
+      label = None
+      confidence = None }
+
 let mapGayPostToChainNode (post: GayPost) =
     let getFileExtension (fileType: int) =
         match fileType with
@@ -465,6 +527,7 @@ let mapGayPostToChainNode (post: GayPost) =
 let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
     let quoteIndicator =
         match appSettings.Website with
+        | Website.EightChan
         | Website.FourChan -> "&gt;&gt;"
         | Website.GayChan -> @"\u003E\u003E"
         | _ -> failwith "Invalid Website Selection"
@@ -505,6 +568,7 @@ let sanitize (driver: FirefoxDriver) node =
         { node with
             comment =
                 (match appSettings.Website with
+                 | Website.EightChan
                  | Website.FourChan ->
                      node.unsanitized.Replace("<br>", "\n")
                      |> stripTags
@@ -634,6 +698,16 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
          |> fun a -> a.posts
          |> Array.filter (fun p -> p.id > maxId)
          |> Array.map mapGayPostToChainNode
+     | Website.EightChan ->
+         driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.json")
+         Thread.Sleep(2000)
+         driver.FindElement(By.CssSelector("h1 > a")).Click()
+
+         driver.FindElement(By.TagName("pre")).Text
+         |> JsonSerializer.Deserialize<EightThread>
+         |> fun a -> a.posts
+         |> Array.filter (fun p -> p.postId > maxId)
+         |> Array.map mapEightPostToChainNode
      | _ -> failwith "Invalid Website Selection")
     |> Array.map (sanitize driver)
     |> populateChainNodeDictionary
@@ -753,8 +827,9 @@ let captionNodeApi (file: string) =
 let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
         match appSettings.Website with
-        | Website.FourChan -> driver.FindElement(By.CssSelector($"a.fa-download[href='{url}']"))
+        | Website.FourChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
         | Website.GayChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
+        | Website.EightChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
         | _ -> failwith "Invalid Website Selection"
 
     downloadLink.SendKeys(Keys.Return)
@@ -774,6 +849,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
         | Website.GayChan -> $"/assets/images/src/{node.filename.Value}"
+        | Website.EightChan -> $"/.media/{node.filename.Value}"
         | _ -> failwith "Invalid Website Selection"
 
     let downloadedPath = downloadImage driver url
@@ -828,6 +904,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             .Navigate()
             .GoToUrl($"https://boards.4chan.org/g/thread/{builder.ThreadId}")
     | Website.GayChan -> driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
+    | Website.EightChan -> driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.html")
     | _ -> failwith "Invalid Website Selection"
 
     Threading.Thread.Sleep(4000)
