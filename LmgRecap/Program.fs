@@ -28,10 +28,8 @@ open Microsoft.SemanticKernel.Memory
 open Microsoft.SemanticKernel.Plugins.Memory
 open OpenAI
 open OpenQA.Selenium
-open OpenQA.Selenium.Chrome
+open OpenQA.Selenium.Firefox
 open Python.Runtime
-open SeleniumStealth.NET.Clients
-open SeleniumStealth.NET.Clients.Extensions
 open SixLabors.ImageSharp
 open SixLabors.ImageSharp.PixelFormats
 open SixLabors.ImageSharp.Processing
@@ -483,7 +481,7 @@ let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
             |> Seq.map (fun p -> p.id)
             |> Seq.toArray }
 
-let sanitize (driver: ChromeDriver) node =
+let sanitize (driver: FirefoxDriver) node =
     let fetchTitleFromUrlAsync (url: string) () : string =
         driver.Navigate().GoToUrl url
         Thread.Sleep(10 * 1000)
@@ -590,7 +588,7 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
         Chains = chains
         Recaps = recaps }
 
-let fetchThreadJson (driver: ChromeDriver) builder =
+let fetchThreadJson (driver: FirefoxDriver) builder =
     let cnm = new Dictionary<int64, ChainNode>()
 
     let populateChainNodeDictionary s =
@@ -752,7 +750,7 @@ let captionNodeApi (file: string) =
 
     Some result.Content
 
-let downloadImage (driver: ChromeDriver) (url: string) =
+let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
         match appSettings.Website with
         | Website.FourChan -> driver.FindElement(By.CssSelector($"a.fa-download[href='{url}']"))
@@ -771,7 +769,7 @@ let identifyNode session (path: string) node =
         label = Some label
         confidence = Some confidence }
 
-let tryCaptionIdentify (driver: ChromeDriver) (session: InferenceSession) (phi3Model) (node) =
+let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3Model) (node) =
     let url =
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
@@ -805,7 +803,7 @@ let tryCaptionIdentify (driver: ChromeDriver) (session: InferenceSession) (phi3M
         if processedPath <> downloadedPath then
             File.Delete(processedPath)
 
-let captionNode (driver: ChromeDriver) session phi3Model node =
+let captionNode (driver: FirefoxDriver) session phi3Model node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
     |> Seq.iter (fun f -> File.Delete(f))
 
@@ -815,7 +813,7 @@ let captionNode (driver: ChromeDriver) session phi3Model node =
         |> Result.defaultValue node
     | _ -> node
 
-let caption (driver: ChromeDriver) (builder: RecapBuilder) =
+let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
     let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
     use session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
 
@@ -1416,18 +1414,22 @@ let printRecapOnly threadNumber =
     |> ignore
 
 let buildWebDriver () =
-    let options = (new ChromeOptions()).ApplyStealth()
+    let options = new FirefoxOptions()
 
     if appSettings.Selenium.Headless then
         options.AddArgument("-headless")
 
+    options.Profile <- new FirefoxProfile(appSettings.Selenium.Profile)
     Directory.CreateDirectory(appSettings.Selenium.Downloads) |> ignore
-    options.AddUserProfilePreference("download.default_directory", appSettings.Selenium.Downloads)
-    options.AddUserProfilePreference("download.prompt_for_download", false)
-    options.AddUserProfilePreference("disable-popup-blocking", "true")
-    options.AddArgument("--start-maximized")
-    options.AddArgument(@"user-data-dir=C:\Users\User\AppData\Local\Google\Chrome\User Data")
-    Stealth.Instantiate(options)
+    options.SetPreference("browser.download.dir", appSettings.Selenium.Downloads)
+    options.SetPreference("browser.download.folderList", 2)
+    options.SetPreference("browser.download.manager.showWhenStarting", false)
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/jpeg")
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/png")
+    options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "image/gif")
+    options.SetPreference("devtools.jsonview.enabled", false)
+    options.SetPreference("general.useragent.override", appSettings.Selenium.UserAgent)
+    new FirefoxDriver(options)
 
 let recap threadNumber =
     let driver = buildWebDriver ()
