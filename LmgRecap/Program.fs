@@ -1104,19 +1104,18 @@ let printRecapHtml builder =
         match String.IsNullOrEmpty(input) with
         | true -> "&nbsp;"
         | false ->
-            let pattern = @">(\d{" + builder.ThreadId.ToString().Length.ToString() + "})"
+            let pattern = @">(\d{5,9})"
 
-            let replacement =
-                @$"<a href=""https://boards.4chan.org/g/thread/{builder.ThreadId}#p$1"" class=""quotelink"">&gt;&gt;$1</a>"
+            let replacement = @$"<a href=""#p$1"" class=""quotelink"">&gt;&gt;$1</a>"
 
-            let output = Regex.Replace(input, pattern, replacement)
-            output
+            let input2 = input.Replace(">>", ">")
+            Regex.Replace(input2, pattern, replacement)
 
     let sb = new StringBuilder()
 
     sb
         .Append(
-            """<html><head><link rel="stylesheet" title="switch" href="https://s.4cdn.org/css/yotsubluenew.715.css"><link rel="stylesheet" title="switch" href="recap.css"></head><body>"""
+            """<html><head><link rel="stylesheet" title="switch" href="yotsubluenew.css"><link rel="stylesheet" title="switch" href="recap.css"></head><body>"""
         )
         .Append(
             """<div class="boardBanner"><div id="bannerCnt" class="title desktop" data-src="176.jpg" title="Click to change"><img width="300" alt="4chan" src="https://desu-usergeneratedcontent.xyz/g/image/1712/76/1712768281067.png"></div><div class="boardTitle" title="Ctrl/⌘+click to edit board title" spellcheck="false">/lmg/ - Recap</div></div>"""
@@ -1138,7 +1137,7 @@ let printRecapHtml builder =
         .Append("</tbody></table>")
     |> ignore
 
-    sb.Append("""<div class="row"><div class="column">""") |> ignore
+    sb.Append("""<div class="row"><div>""") |> ignore
 
     let repliesToHtml replies =
         replies
@@ -1169,30 +1168,20 @@ let printRecapHtml builder =
             )
             |> ignore
 
+        let mardownLinksToHtml a =
+            Regex.Replace(a, @"\[(.*?)\]\((.*?)\)", "<a href=\"$2\">$2</a>")
+
         sb
-            .Append($"""<blockquote class="postMessage" id="m{j.id}">""")
-            .Append(j.unsanitized)
+            .Append($"""<blockquote class="postMessage" id="m{j.id}" style="white-space: pre-wrap;">""")
+            .Append(strToLink (mardownLinksToHtml j.comment))
             .Append("</blockquote></div></div>")
         |> ignore
-
-    let max = 5
-    let mutable once = true
-    let mutable count = 0
 
     let chainToHtml chain =
         let chainSummary c =
             match c.Category with
             | d when d <> "" && d <> "Miku" -> d + ": " + c.Summary
             | _ -> c.Summary
-
-        count <- count + 1
-
-        if count = max then
-            sb.Append("""</div><div class="column">""") |> ignore
-
-            if once = true then
-                count <- 1
-                once <- false
 
         sb.Append($"<h2>{chainSummary chain}</h2>") |> ignore
         chain |> getIncludedNodesMinRating |> Seq.iter chainNodeToHtml
@@ -1228,7 +1217,9 @@ let printRecapHtml builder =
     |> Seq.filter (fun node -> node.label.IsSome && (node.label.Value <> "other"))
     |> Seq.sortBy (fun c -> c.id)
     |> Seq.iter (fun miku ->
-        sb.Append($"""<img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img>""")
+        sb.Append(
+            $"""<a id="p{miku.id}"><img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img></a>"""
+        )
         |> ignore)
 
     sb.Append("</body></html>") |> ignore
