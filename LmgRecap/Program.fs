@@ -829,12 +829,19 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
         match appSettings.Website with
         | Website.FourChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
         | Website.GayChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
-        | Website.EightChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
+        | Website.EightChan -> driver.FindElement(By.CssSelector($"a[href][download='{url}']"))
         | _ -> failwith "Invalid Website Selection"
 
     downloadLink.SendKeys(Keys.Return)
-    Threading.Thread.Sleep(4000)
-    Directory.EnumerateFiles(appSettings.Selenium.Downloads).First()
+
+    let rec waitForDownload (filePaths: IEnumerable<string>) =
+        if filePaths.Count() = 1 && filePaths.First().EndsWith(".part") <> true then
+            filePaths.First()
+        else
+            Threading.Thread.Sleep(1000)
+            Directory.EnumerateFiles(appSettings.Selenium.Downloads) |> waitForDownload
+
+    Directory.EnumerateFiles(appSettings.Selenium.Downloads) |> waitForDownload
 
 let identifyNode session (path: string) node =
     let bytes = File.ReadAllBytes(path)
@@ -849,7 +856,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
         | Website.GayChan -> $"/assets/images/src/{node.filename.Value}"
-        | Website.EightChan -> $"/.media/{node.filename.Value}"
+        | Website.EightChan -> node.filename.Value
         | _ -> failwith "Invalid Website Selection"
 
     let downloadedPath = downloadImage driver url
