@@ -454,14 +454,14 @@ let mapPostToChainNode post =
 let mapEightPostToChainNode post =
     let getUnixTimestamp (datetimeString: string) : int64 =
         let format = "yyyy-MM-ddTHH:mm:ss.fffZ"
+
         match
             DateTime.TryParseExact(datetimeString, format, null, System.Globalization.DateTimeStyles.AssumeUniversal)
         with
         | (true, datetimeObject) ->
             let epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             int64 (datetimeObject - epoch).TotalSeconds
-        | (false, _) ->
-            failwith "Invalid datetime format"
+        | (false, _) -> failwith "Invalid datetime format"
 
     let ts = getUnixTimestamp post.creation
 
@@ -571,11 +571,7 @@ let sanitize (driver: FirefoxDriver) node =
                      node.unsanitized.Replace("<br>", "\n")
                      |> stripTags
                      |> HttpUtility.HtmlDecode
-                     |> fun c ->
-                         Regex
-                             .Replace(c, @">>\d{" + node.id.ToString().Length.ToString() + "}", String.Empty)
-                             .Replace("https://arxiv.org/pdf", "https://arxiv.org/abs")
-                             .Trim()
+                     |> fun c -> c.Replace("https://arxiv.org/pdf", "https://arxiv.org/abs").Trim()
                      |> fun c ->
                          (Regex.Matches(
                              c,
@@ -1299,9 +1295,7 @@ let printRecapHtml builder =
     |> Seq.filter (fun node -> node.label.IsSome && (node.label.Value <> "other"))
     |> Seq.sortBy (fun c -> c.id)
     |> Seq.iter (fun miku ->
-        sb.Append(
-            $"""<a id="p{miku.id}"><img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img></a>"""
-        )
+        sb.Append($"""<a id="p{miku.id}"><img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img></a>""")
         |> ignore)
 
     sb.Append("</body></html>") |> ignore

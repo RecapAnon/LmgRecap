@@ -24,11 +24,13 @@ Current Chain:
     None.
 - Id: 100054056
   Comment: |-
+    >>100054035
     yup we just made computers write and think and it's no big deal at all
   Attachment: |-
     None.
 - Id: 100054057
   Comment: |-
+    >>100054035
     why not wait 2 more days for llama3 release before saying that
   Attachment: |-
     None.
@@ -38,6 +40,7 @@ Unrated:
 ```yaml
 - Id: 100054205
   Comment: |-
+    >>100054057
     llama3 is abandonvaporware
   Attachment: |-
     None.
@@ -59,11 +62,13 @@ Current Chain:
 ```yaml
 - Id: 100052749
   Comment: |-
-    There's an improved Q4 cache for exllamav2 in the dev branch. https://github.com/turboderp/exllamav2/blob/dev/doc/qcache_eval.md
+    There's an improved Q4 cache for exllamav2 in the dev branch.
+    https://github.com/turboderp/exllamav2/blob/dev/doc/qcache_eval.md
   Attachment: |-
     None.
 - Id: 100052784
   Comment: |-
+    >>100052749
     Why is FP8 cache worse than even old Q4 cache? So I should be using Q4 cache even if I have the memory to spare?
   Attachment: |-
     None.
@@ -73,12 +78,18 @@ Unrated:
 ```yaml
 - Id: 100052910
   Comment: |-
+    >>100052784
     fp8 is dumb truncation, q4 is proper quantization
   Attachment: |-
     None.
 - Id: 100053040
   Comment: |-
-    The amount of data is nowhere near enough to make conclusive statements. llama.cpp estimates an uncertainty of +-0.3 for a single perplexity value given that amount of data. Granted, the values are going to be highly correlated so the uncertainty on the difference of two values is going to be lower but even at 99% correlation the measurement is simply not precise enough.
+    >>100052784
+    >>100052910
+    >Dataset is The Pile, 10 rows of 512 tokens per test.
+    The amount of data is nowhere near enough to make conclusive statements.
+    llama.cpp estimates an uncertainty of +-0.3 for a single perplexity value given that amount of data.
+    Granted, the values are going to be highly correlated so the uncertainty on the difference of two values is going to be lower but even at 99% correlation the measurement is simply not precise enough. 
   Attachment: |-
     None.
 ```

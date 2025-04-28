@@ -30,17 +30,20 @@ Some additional guidelines:
     None.
 - Id: 98605793
   Comment: |-
+    >>98605729
     Underclock/performance limit them both slightly to shave off a few dozen watts maybe?
   Attachment: |-
     None.
 - Id: 98605828
   Comment: |-
+    >>98605793
     Yeah that's what I'm leaning towards, but I'm asking this everywhere I can because I would kick myself if I found out after my trip that there was a way to execute the models over mpirun RDMA.
     The dual psu can support two cards at max, but then I lose redundancy
   Attachment: |-
     None.
 - Id: 98605854
   Comment: |-
+    >>98605828
     >I would kick myself if I found out after my trip that there was a way to execute the models over mpirun RDMA.
     llama.cpp has MPI support though I don't know how well it works with gpu offload or if it will do exactly what you want
   Attachment: |-
@@ -66,11 +69,13 @@ Summary: |-
     None.
 - Id: 98451364
   Comment: |-
+    >>98451356
     100MB 
   Attachment: |-
     None.
 - Id: 98451492
   Comment: |-
+    >>98451356
     Four tokens.
     I've had ok results with down to 10MB with lower lr and epochs, using some grad accum. More is better though as long as it's quality. 50-100MB is good.
     Tried 1MB of discord logs once and it was wack - too low lr and nothing really came of it, and any higher to bring the loss down further would make it schizo.
@@ -78,17 +83,20 @@ Summary: |-
     None.
 - Id: 98451595
   Comment: |-
+    >>98451356
     50-100 training examples are plenty enough for seeing the model act as intended and even perform quite good at one task. They have to be good samples, not just random data thrown at the model, though.
   Attachment: |-
     None.
 - Id: 98451701
   Comment: |-
+    >>98451595
     >They have to be good samples, not just random data thrown at the model, though.
     What qualifies "good"? Is high quality prose enough, or does it have to be formatted some way besides the big jsonl? I'm mostly trying to affect the language the model uses, I'm assuming if I train it on the base model, then use the created LORA with an instruct finetune, the instruct part should still be intact, right?
   Attachment: |-
     None.
 - Id: 98451818
   Comment: |-
+    >>98451701
     Good here means highly diversified, well-structured, with good grammar/prose, not too complex for the model to draw patterns from.
     For example, just throwing poorly written raw fanfictions at the model isn't going to make it learn much with 50-100 samples.
   Attachment: |-
@@ -114,26 +122,31 @@ Summary: |-
     None.
 - Id: 98674962
   Comment: |-
+    >>98674943
     Depends on if Nvida or openAI forcibly move to a new method, no one else can really move the needle
   Attachment: |-
     None.
 - Id: 98675038
   Comment: |-
+    >>98674943
     GPU AI features target a handful of machine instructions broadly useful for neural networks, not transformers specifically. The mamba paper states they used A100 GPUs for all their testing.
   Attachment: |-
     None.
 - Id: 98675408
   Comment: |-
+    >>98674943
     isn't mamba supposed to be more friendly to existing hardware because of state space vs kv cache?
   Attachment: |-
     None.
 - Id: 98675455
   Comment: |-
+    >>98674943
     AI hardware? Neuromorphic chips are 'AI hardware' - unfortunately we won't get them to market until the end of the decade.
   Attachment: |-
     None.
 - Id: 98675475
   Comment: |-
+    >>98675455
     Didn't OpenAI buy a bunch of Neuromorphic chips?
   Attachment: |-
     None.
@@ -159,16 +172,19 @@ Summary: |-
     None.
 - Id: 98864335
   Comment: |-
+    >>98864289
     it literally won't affect china at all. china will just still buy the chips through 3rd party sellers.
   Attachment: |-
     None.
 - Id: 98864373
   Comment: |-
+    >>98864335
     This. Setting up a fake AI business full of legitimate US citizens doing legitimate work is a trivial expense for the CPC. If someone audits the hardware and discovers that all the server racks are full of bricks instead, well what are you gonna do?
   Attachment: |-
     None.
 - Id: 98864362
   Comment: |-
+    >>98864289
     China is a big enough market by itself that it can support domestic chipmaking. So good job, congrats, you've slowed them down for a few years, but what is the USA going to do with this temporary advantage in GPU processing power? So far it looks like the State's interest is in coming up with regulations and restrictions and partnerships and "safety." You don't need a GPU advantage for any of that so it's likely the head start will be wasted unless the US's hopes are pinned on some kind of black project with fully automated killbots that it intends to use ASAP.
   Attachment: |-
     None.
