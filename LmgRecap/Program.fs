@@ -172,8 +172,7 @@ type CaptionResponse2 = { choices: Choice[] }
 type ChainNodeViewModel =
     { id: int64
       comment: string
-      attachment: string
-      context: string }
+      attachment: string }
 
 type ChainViewModel =
     { ReplyChainNumber: int
@@ -240,8 +239,7 @@ let toViewModel node =
             "None."
         else
             node.comment
-      attachment = defaultArg node.caption "None."
-      context = defaultArg node.context "None." }
+      attachment = defaultArg node.caption "None." }
 
 let prettyPrintViewModel nodes =
     SerializerBuilder()

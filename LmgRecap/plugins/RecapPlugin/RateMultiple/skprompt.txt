@@ -22,21 +22,15 @@ Current Chain:
     LLMs have peaked and are a failed technology. See you again in 15 years.
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100054056
   Comment: |-
     yup we just made computers write and think and it's no big deal at all
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100054057
   Comment: |-
     why not wait 2 more days for llama3 release before saying that
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 
@@ -46,8 +40,6 @@ Unrated:
   Comment: |-
     llama3 is abandonvaporware
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 </message>
@@ -70,14 +62,10 @@ Current Chain:
     There's an improved Q4 cache for exllamav2 in the dev branch. https://github.com/turboderp/exllamav2/blob/dev/doc/qcache_eval.md
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100052784
   Comment: |-
     Why is FP8 cache worse than even old Q4 cache? So I should be using Q4 cache even if I have the memory to spare?
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 
@@ -88,14 +76,10 @@ Unrated:
     fp8 is dumb truncation, q4 is proper quantization
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100053040
   Comment: |-
     The amount of data is nowhere near enough to make conclusive statements. llama.cpp estimates an uncertainty of +-0.3 for a single perplexity value given that amount of data. Granted, the values are going to be highly correlated so the uncertainty on the difference of two values is going to be lower but even at 99% correlation the measurement is simply not precise enough.
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 </message>

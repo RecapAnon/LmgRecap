@@ -30,8 +30,6 @@ Some additional guidelines:
     >Customize GPT-4o mini for your application with fine-tuning. Available today to tier 4 and 5 users, we plan to gradually expand access to all tiers. First 2M training tokens a day are free, through Sept 23.
   Attachment: |-
     None.
-  Context: |-
-    None.
 ```
 </message>
 <message role="assistant">
@@ -50,28 +48,20 @@ Rating: 5
     There's an improved Q4 cache for exllamav2 in the dev branch. [exllamav2/doc/qcache_eval.md at dev · turboderp/exllamav2](https://github.com/turboderp/exllamav2/blob/dev/doc/qcache_eval.md)
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100052784
   Comment: |-
     Why is FP8 cache worse than even old Q4 cache? So I should be using Q4 cache even if I have the memory to spare?
   Attachment: |-
-    None.
-  Context: |-
     None.
 - Id: 100052910
   Comment: |-
     fp8 is dumb truncation, q4 is proper quantization
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 100053040
   Comment: |-
     The amount of data is nowhere near enough to make conclusive statements. llama.cpp estimates an uncertainty of +-0.3 for a single perplexity value given that amount of data. Granted, the values are going to be highly correlated so the uncertainty on the difference of two values is going to be lower but even at 99% correlation the measurement is simply not precise enough.
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 </message>
@@ -91,28 +81,20 @@ Rating: 7
     What's the best most intelligent, creative, soulful model for RP currently?
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 102542255
   Comment: |-
     Seconding this but it needs to fit onto 24 GB of VRAM without stepping below 8-bit quantization.
   Attachment: |-
-    None.
-  Context: |-
     None.
 - Id: 102542275
   Comment: |-
     mythomax
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 102542319
   Comment: |-
     Thank you, Anon.
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 </message>
@@ -132,14 +114,10 @@ Rating: 4
     Do local models still suck?
   Attachment: |-
     None.
-  Context: |-
-    None.
 - Id: 102398862
   Comment: |-
     depends on your hardware and what you're comparing to, but generally 3-6mos or so behind corpo SOTA
   Attachment: |-
-    None.
-  Context: |-
     None.
 - Id: 102398966
   Comment: |-
@@ -147,8 +125,6 @@ Rating: 4
     >not only do they still suck they are now more censored and slopped than ever before
     Hi Rajesh from Microsoft Marketing Department. How is weather in India? Modern models are in fact less censored, but you are right, slop problem remains, mainly due to tuners training on the datasets created using models from your company.
   Attachment: |-
-    None.
-  Context: |-
     None.
 ```
 </message>
