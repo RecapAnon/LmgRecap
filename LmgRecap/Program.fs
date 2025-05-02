@@ -254,6 +254,7 @@ let prettyPrintViewModel nodes =
 
 let deserializer =
     DeserializerBuilder()
+        .IgnoreUnmatchedProperties()
         .WithNamingConvention(PascalCaseNamingConvention.Instance)
         .Build()
 
@@ -410,6 +411,8 @@ let ask kernelFunction (kernelArguments: KernelArguments) =
             .Replace("```yaml", "")
             .Replace("```", "")
             .Replace("Unrated:", "")
+            .Replace("<think>", "")
+            .Replace("</think>", "")
             .Trim()
     |> fun i ->
         globalLogger.LogDebug("Response:\n" + i)
