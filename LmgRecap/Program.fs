@@ -411,9 +411,13 @@ let ask kernelFunction (kernelArguments: KernelArguments) =
             .Replace("```yaml", "")
             .Replace("```", "")
             .Replace("Unrated:", "")
-            .Replace("<think>", "")
-            .Replace("</think>", "")
             .Trim()
+    |> fun s ->
+        let idx = s.IndexOf("</think>\n\n")
+        if idx = -1 then
+            s
+        else
+            s.Substring(idx + "</think>\n\n".Length)
     |> fun i ->
         globalLogger.LogDebug("Response:\n" + i)
         i
