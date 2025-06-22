@@ -68,6 +68,7 @@ type AppSettings =
     { Embeddings: Service
       Multimodal: Service
       Completion: Service
+      Audio: Service
       MemoryStore: Service
       ResnetModelPath: string
       MinimumRating: int
@@ -326,7 +327,9 @@ let identify (session: InferenceSession) (imageBytes: byte array) =
     let results = session.Run(inputs)
     let outputTensor = results[0].AsTensor<float32>()
     let probs = outputTensor.ToArray()
-    let allowed = [| "kasane_teto"; "hatsune_miku"; "kagamine_rin"; "akita_neru"; "yowane_haku" |]
+
+    let allowed =
+        [| "kasane_teto"; "hatsune_miku"; "kagamine_rin"; "akita_neru"; "yowane_haku" |]
 
     let tags =
         session.ModelMetadata.CustomMetadataMap["tags"]
@@ -414,6 +417,7 @@ let ask kernelFunction (kernelArguments: KernelArguments) =
             .Trim()
     |> fun s ->
         let idx = s.IndexOf("</think>\n\n")
+
         if idx = -1 then
             s
         else
@@ -1464,6 +1468,28 @@ let threadSummaryRecap threadNumber =
     |> printfn "%s"
     |> ignore
 
+let generateSpeech (outputPath: string) (text: string) =
+    if File.Exists(outputPath) then
+        printfn $"Audio file already exists at {outputPath}"
+    else
+        try
+            let clientOptions = new OpenAIClientOptions()
+            clientOptions.Endpoint <- new Uri(appSettings.Audio.Endpoint)
+            clientOptions.NetworkTimeout <- new TimeSpan(2, 0, 0)
+
+            let client =
+                new OpenAIClient(new ClientModel.ApiKeyCredential(appSettings.Audio.Key), clientOptions)
+
+            let audioClient = client.GetAudioClient("kokoro")
+            let response = audioClient.GenerateSpeechAsync(text, "af_miku").Result.Value
+            use stream = File.Create(outputPath)
+            response.ToStream().CopyTo(stream)
+            globalLogger.LogInformation $"Audio segment saved to {outputPath}"
+        with e ->
+            globalLogger.LogError $"Error creating Audio segment {outputPath}: {e.Message}"
+
+    text
+
 let generateNewscasterScript threadNumber =
     threadNumber
     |> createRecapBuilder
@@ -1474,6 +1500,7 @@ let generateNewscasterScript threadNumber =
     |> Array.map (fun line -> line.Replace("--", "").Replace(": ", ""))
     |> String.concat "\n"
     |> (askDefault recapPluginFunctions["NewscasterScript"])
+    |> generateSpeech "output_audio.wav"
     |> printfn "%s"
     |> ignore
 
