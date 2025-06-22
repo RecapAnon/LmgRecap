@@ -1,5 +1,5 @@
 <message role="system">
-/think
+/no_think
 You are a helpful assistant.
 </message>
 <message role="user">
