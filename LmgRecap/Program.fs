@@ -1043,7 +1043,10 @@ let rateMultiple (recapPluginFunctions: KernelPlugin) (builder: RecapBuilder) =
 
 let categorize (builder: RecapBuilder) =
     let categorizeChain chain =
-        match chain.Nodes[0].comment.Contains("https://arxiv.org") with
+        match
+            chain.Nodes[0].comment.Contains("https://arxiv.org")
+            || chain.Nodes[0].comment.Contains("https://huggingface.co/papers")
+        with
         | true -> { chain with Category = "Paper" }
         | false -> chain
 
