@@ -329,7 +329,7 @@ let identify (session: InferenceSession) (imageBytes: byte array) =
     let probs = outputTensor.ToArray()
 
     let allowed =
-        [| "kasane_teto"; "hatsune_miku"; "kagamine_rin"; "akita_neru"; "yowane_haku" |]
+        [| "kasane_teto"; "hatsune_miku"; "kagamine_rin"; "akita_neru"; "yowane_haku"; "megurine_luka" |]
 
     let tags =
         session.ModelMetadata.CustomMetadataMap["tags"]
