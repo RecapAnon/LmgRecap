@@ -814,7 +814,7 @@ let captionNodeApi (file: string) =
         kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
 
     let history = new ChatHistory()
-    history.AddSystemMessage("You are a friendly and helpful assistant that responds to questions directly.")
+    history.AddSystemMessage("You are an image captioner that responds to questions directly.")
 
     let message = new ChatMessageContentItemCollection()
     message.Add(new TextContent("Describe what is in the image."))
@@ -827,7 +827,13 @@ let captionNodeApi (file: string) =
     let result = chat.GetChatMessageContentAsync(history).Result
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", result.Content)
 
-    Some result.Content
+    let s = result.Content
+    let idx = s.IndexOf("<answer>")
+
+    if idx = -1 then
+        Some s
+    else
+        Some (s.Substring(idx + "<answer>".Length))
 
 let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
