@@ -817,7 +817,7 @@ let captionNodeApi (file: string) =
     history.AddSystemMessage("You are an image captioner that responds to questions directly.")
 
     let message = new ChatMessageContentItemCollection()
-    message.Add(new TextContent("Describe what is in the image."))
+    message.Add(new TextContent("Describe what is in the image. If the image is a screenshot of a chat with an AI assistant, prefix your description with 'chatlog; '. Otherwise, use the 'image; ' prefix before the description."))
 
     let bytes = File.ReadAllBytes(file)
     let mimeType = getMimeType file
