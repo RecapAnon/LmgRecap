@@ -1125,8 +1125,8 @@ let recapToText builder =
     |> sb2.Append
     |> ignore
 
-    sb2.Append("\n\nWhy?: 9 reply limit >>102478518\n") |> ignore
-    sb2.Append("Fix: https://rentry.org/lmg-recap-script") |> ignore
+    sb2.Append("\n\nWhy?: >>102478518\n") |> ignore
+    sb2.Append("Enable Links: https://rentry.org/lmg-recap-script") |> ignore
 
     let header =
         sprintf "►Recent Highlights from the Previous Thread: >>%s\n\n" builder.ThreadId
