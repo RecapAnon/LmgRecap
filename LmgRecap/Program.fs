@@ -814,10 +814,10 @@ let captionNodeApi (file: string) =
         kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
 
     let history = new ChatHistory()
-    history.AddSystemMessage("You are an image captioner that responds to questions directly.")
+    // history.AddSystemMessage("You are an image captioner that responds to questions directly.")
 
     let message = new ChatMessageContentItemCollection()
-    message.Add(new TextContent("Describe what is in the image. If the image is a screenshot of a chat with an AI assistant, prefix your description with 'chatlog; '. Otherwise, use the 'image; ' prefix before the description."))
+    message.Add(new TextContent("Describe the image."))//" If the image is a screenshot of a chat with an AI assistant, prefix your description with 'chatlog; '. Otherwise, use the 'image; ' prefix before the description."))
 
     let bytes = File.ReadAllBytes(file)
     let mimeType = getMimeType file
