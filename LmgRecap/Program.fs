@@ -752,10 +752,9 @@ let captionNodeApi (file: string) =
         kernel.Services.GetRequiredKeyedService<IChatCompletionService>("Multimodal")
 
     let history = new ChatHistory()
-    // history.AddSystemMessage("You are an image captioner that responds to questions directly.")
 
     let message = new ChatMessageContentItemCollection()
-    message.Add(new TextContent("Describe the image."))//" If the image is a screenshot of a chat with an AI assistant, prefix your description with 'chatlog; '. Otherwise, use the 'image; ' prefix before the description."))
+    message.Add(new TextContent("Describe the image."))
 
     let bytes = File.ReadAllBytes(file)
     let mimeType = getMimeType file
@@ -765,13 +764,23 @@ let captionNodeApi (file: string) =
     let result = chat.GetChatMessageContentAsync(history).Result
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", result.Content)
 
-    let s = result.Content
-    let idx = s.IndexOf("<answer>")
+    history.AddAssistantMessage(result.Content)
 
-    if idx = -1 then
-        Some s
-    else
-        Some (s.Substring(idx + "<answer>".Length))
+    history.AddUserMessage(
+        "If the image is a screenshot of a chat with an AI assistant, respond with 'Chatlog'. Otherwise, respond with 'Image'"
+    )
+
+    let resultCategory = chat.GetChatMessageContentAsync(history).Result
+    globalLogger.LogInformation("Generation complete: {GeneratorResponse}", resultCategory.Content)
+    Some(resultCategory.Content + ". " + result.Content)
+
+// let s = result2.Content
+// let idx = s.IndexOf("<answer>")
+
+// if idx = -1 then
+//     Some s
+// else
+//     Some (s.Substring(idx + "<answer>".Length))
 
 let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
