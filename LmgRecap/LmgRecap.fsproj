@@ -7,6 +7,21 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <UserSecretsId>5ec4b44a-df7e-42d0-b0b2-1234c28d32c2</UserSecretsId>
   </PropertyGroup>
+  <PropertyGroup>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <DebugType>none</DebugType>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TrimMode>partial</TrimMode>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
   <ItemGroup>
     <Content Include="SortGlossary.fsx" />
     <Content Include="Properties/launchSettings.json" />
