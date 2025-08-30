@@ -25,4 +25,4 @@ let loadAndSortSections () =
     use f = new StreamWriter(File.OpenWrite("glossary.md"), Encoding.UTF8)
     sortedSections |> List.iter (fun (_, section) -> f.WriteLine(section + "\r\n"))
 
-loadAndSortSections()
+loadAndSortSections ()
