@@ -75,9 +75,11 @@
     <Compile Include="FSUtils.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="VideoFrameExtractor.fs" />
+    <Compile Include="WaifuDiffusionPredictor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.0" />
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="9.0.6" />
