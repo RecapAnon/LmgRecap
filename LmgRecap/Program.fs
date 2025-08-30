@@ -73,6 +73,9 @@ type AppSettings =
       Audio: Service
       MemoryStore: Service
       ResnetModelPath: string
+      UseCuda: bool
+      WDModelPath: string | null
+      WDLabelPath: string | null
       MinimumRating: int
       MinimumChainRating: int
       MaxReplies: int
@@ -276,78 +279,6 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
     with e ->
         globalLogger.LogError e.Message
         Error e.Message
-
-let imageToOnnx (imageBytes: byte array) (size: int) =
-    use stream = new MemoryStream(imageBytes)
-    use image = Image.Load<Rgb24>(stream)
-
-    let h, w = image.Height, image.Width
-
-    let h', w' =
-        if h > w then
-            (size, int (float size * float w / float h))
-        else
-            (int (float size * float h / float w), size)
-
-    image.Mutate(fun c ->
-        c.Resize(w', h', KnownResamplers.Lanczos3) |> ignore
-        c.Pad(size, size, Color.White) |> ignore)
-
-    let width = image.Width
-    let height = image.Height
-
-    for y in 0 .. (height - h') / 2 do
-        for x in 0 .. width - 1 do
-            image[x, y] <- image[x, (height - h') / 2 + 1]
-
-    for y in height - (height - h') / 2 .. height - 1 do
-        for x in 0 .. width - 1 do
-            image[x, y] <- image[x, height - (height - h') / 2 - 1]
-
-    for y in 0 .. height - 1 do
-        for x in 0 .. (width - w') / 2 do
-            image[x, y] <- image[(width - w') / 2 + 1, y]
-
-    for y in 0 .. height - 1 do
-        for x in width - (width - w') / 2 .. width - 1 do
-            image[x, y] <- image[width - (width - w') / 2 - 1, y]
-
-    let tensor = new DenseTensor<float32>([| 1; size; size; 3 |])
-
-    for y = 0 to size - 1 do
-        for x = 0 to size - 1 do
-            let pixel = image[x, y]
-            tensor[0, y, x, 0] <- float32 pixel.R / 255.0f
-            tensor[0, y, x, 1] <- float32 pixel.G / 255.0f
-            tensor[0, y, x, 2] <- float32 pixel.B / 255.0f
-
-    tensor
-
-let identify (session: InferenceSession) (imageBytes: byte array) =
-    let tensor = imageToOnnx imageBytes 512
-    let inputs = [ NamedOnnxValue.CreateFromTensor("inputs", tensor) ]
-    let results = session.Run(inputs)
-    let outputTensor = results[0].AsTensor<float32>()
-    let probs = outputTensor.ToArray()
-
-    let allowed =
-        [| "kasane_teto"
-           "hatsune_miku"
-           "kagamine_rin"
-           "akita_neru"
-           "yowane_haku"
-           "megurine_luka" |]
-
-    let tags =
-        session.ModelMetadata.CustomMetadataMap["tags"]
-        |> JsonSerializer.Deserialize<string[]>
-
-    Array.zip tags probs
-    |> Array.filter (fun (_, score) -> score >= 0.5f)
-    |> Array.filter (fun (tag, _) -> allowed.Contains(tag))
-    |> Array.sortByDescending snd
-    |> Array.tryHead
-    |> Option.defaultValue ("other", 1f)
 
 let memories =
     let myHandler = new MyRedirectingHandler(appSettings)
@@ -861,15 +792,41 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
 
     Directory.EnumerateFiles(appSettings.Selenium.Downloads) |> waitForDownload
 
-let identifyNode session (path: string) node =
+let getWaifuTags (logger: ILogger) (tagger: WaifuDiffusionPredictor option) (bytes: byte array) : string =
+    match tagger with
+    | Some t ->
+        let allowed =
+            [|  "kasane teto"
+                "hatsune miku"
+                "kagamine rin"
+                "akita neru"
+                "yowane haku"
+                "megurine luka" |]
+            
+        let result = t.predict bytes 0.35 true 0.85 true
+        let ratingTags = result.RatingTags |> Array.map fst
+        let generalTags = result.GeneralTags |> Array.map fst
+        let characterTags = result.CharacterTags |> Array.map fst
+        let allTags = Array.concat [ ratingTags; generalTags; characterTags ]
+        logger.LogInformation("WaifuDiffusion Tags: {Tags}", allTags)
+
+        result.CharacterTags
+        |> Array.filter (fun (tag, _) -> allowed.Contains(tag))
+        |> Array.sortByDescending snd
+        |> Array.tryHead
+        |> Option.map fst
+        |> Option.defaultValue "other"
+    | None -> "other"
+
+let identifyNode tagger (path: string) node =
     let bytes = File.ReadAllBytes(path)
-    let label, confidence = identify session bytes
+    let label = getWaifuTags globalLogger tagger bytes
 
     { node with
         label = Some label
-        confidence = Some confidence }
+        confidence = Some 1.0f }
 
-let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3Model) (node) =
+let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor option) (phi3Model) (node) =
     let url =
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
@@ -897,7 +854,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (session: InferenceSession) (phi3
         | CaptionMethod.Api -> captionNodeApi processedPath
         | _ -> node.caption
         |> fun caption -> { node with caption = caption }
-        |> identifyNode session processedPath
+        |> identifyNode tagger processedPath
     finally
         File.Delete(downloadedPath)
 
@@ -915,8 +872,17 @@ let captionNode (driver: FirefoxDriver) session phi3Model node =
     | _ -> node
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
-    let sessionOptions = SessionOptions.MakeSessionOptionWithCudaProvider(0)
-    use session = new InferenceSession(appSettings.ResnetModelPath, sessionOptions)
+    let tagger =
+        try
+            match Option.ofObj appSettings.WDModelPath, Option.ofObj appSettings.WDLabelPath with
+            | Some modelPath, Some labelPath ->
+                Some(new WaifuDiffusionPredictor(modelPath, labelPath, appSettings.UseCuda))
+            | _ ->
+                logger.LogWarning("Failed to initialize WaifuDiffusionPredictor: Missing configuration.")
+                None
+        with ex ->
+            logger.LogError(ex, "Failed to initialize WaifuDiffusionPredictor: {Error}", ex.Message)
+            None
 
     let phi3Model =
         match appSettings.CaptionMethod with
@@ -939,7 +905,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             builder.Chains
             |> Array.map (fun chain ->
                 { chain with
-                    Nodes = chain.Nodes |> Array.map (captionNode driver session phi3Model) }) }
+                    Nodes = chain.Nodes |> Array.map (captionNode driver tagger phi3Model) }) }
 
 let getIncludedNodes alwaysAddOp rating chain =
     let nodes = new List<ChainNode>()
@@ -985,7 +951,6 @@ let getIncludedNodesMinRating = getIncludedNodes false (fun r -> minRating r)
 let rateChain (recapPluginFunctions: KernelPlugin) chain =
     getIncludedNodes true minRating chain
     |> Seq.map toViewModel
-    |> Ok
     |> prettyPrintViewModel
     |> (askDefault recapPluginFunctions["RateChain"])
     |> deserializer.Deserialize<RatingOutput>
