@@ -19,8 +19,6 @@ open Logging
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
-open Microsoft.ML.OnnxRuntime
-open Microsoft.ML.OnnxRuntime.Tensors
 open Microsoft.ML.OnnxRuntimeGenAI
 open Microsoft.SemanticKernel
 open Microsoft.SemanticKernel.ChatCompletion
@@ -32,9 +30,6 @@ open OpenAI
 open OpenQA.Selenium
 open OpenQA.Selenium.Firefox
 open Python.Runtime
-open SixLabors.ImageSharp
-open SixLabors.ImageSharp.PixelFormats
-open SixLabors.ImageSharp.Processing
 open VideoFrameExtractor
 open YamlDotNet.Core
 open YamlDotNet.Serialization
@@ -74,8 +69,8 @@ type AppSettings =
       MemoryStore: Service
       ResnetModelPath: string
       UseCuda: bool
-      WDModelPath: string | null
-      WDLabelPath: string | null
+      WDModelPath: string
+      WDLabelPath: string
       MinimumRating: int
       MinimumChainRating: int
       MaxReplies: int
@@ -778,14 +773,6 @@ let captionNodeApi (file: string) =
     globalLogger.LogInformation("Generation complete: {GeneratorResponse}", resultCategory.Content)
     Some(resultCategory.Content + ". " + result.Content)
 
-// let s = result2.Content
-// let idx = s.IndexOf("<answer>")
-
-// if idx = -1 then
-//     Some s
-// else
-//     Some (s.Substring(idx + "<answer>".Length))
-
 let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
         match appSettings.Website with
@@ -809,13 +796,13 @@ let getWaifuTags (logger: ILogger) (tagger: WaifuDiffusionPredictor option) (byt
     match tagger with
     | Some t ->
         let allowed =
-            [|  "kasane teto"
-                "hatsune miku"
-                "kagamine rin"
-                "akita neru"
-                "yowane haku"
-                "megurine luka" |]
-            
+            [| "kasane teto"
+               "hatsune miku"
+               "kagamine rin"
+               "akita neru"
+               "yowane haku"
+               "megurine luka" |]
+
         let result = t.predict bytes 0.35 true 0.85 true
         let ratingTags = result.RatingTags |> Array.map fst
         let generalTags = result.GeneralTags |> Array.map fst
