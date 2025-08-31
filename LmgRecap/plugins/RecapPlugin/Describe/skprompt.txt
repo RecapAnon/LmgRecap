@@ -14,8 +14,9 @@ Second, articulate a comprehensive Reasoning based on these Clues, explaining ho
 Third, generate a Summary of the reply chain that is suited to the 4chan culture (e.g., using "Anon" instead of "User") and accurately reflects the content discussed within the chain. Use the Clues, Reasoning, and input to create the Summary.
 
 Some additional guidelines:
+- The Summary should be as concise and succinct as possible. Aim for 10 words or less.
 - Do not present the Summary as a question or use question marks.
-- If a reply chain is about a scientific paper, the Summary should be the title of the paper.
+- If a reply chain starts by linking to a scientific paper, the Summary should be only the exact title of the paper regardless of the discussion.
 - The context of the discussion being about testing, comparing, and roleplaying with AI large language models is assumed and implied. There is no need to specify that in the summaries.
 - Be cautious when summarizing news posted by anons, as it may be wrong or misleading. Generate a Summary for the entire discussion, not just the news itself.
 - Focus on giving the reader an idea of what is discussed in the reply chain, without stating anything posted by anons as factual.

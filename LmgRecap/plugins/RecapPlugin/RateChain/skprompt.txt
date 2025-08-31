@@ -16,8 +16,9 @@ Some additional guidelines:
 - Non-technical discussion does not belong in the recap
 - Model suggestions and recommendations are subjective and not worth including in the recap 
 - Unanswered questions and chains lacking replies show lack of interest and should not be included in the recap
-- News and announcements lacking replies should be rated 5, higher depending on engagement
+- News and announcements lacking replies should be rated at least 5
 - Don't over-emphasize the presence of links or resources for beginner-level questions or common information
+- This is not a tech support forum. It's great if troubleshooting help is offered, but it does not belong in the recap unless it can be useful for experienced users.
 - Discussion about hardware required to run large language models (such as computers, servers, and GPUs) is considered on-topic
 - Important and lengthy discussions should not be unduly penalized for a few unconstructive comments
 - Use your best judgment to filter the discussion and curate only the most valuable chains for the recap
