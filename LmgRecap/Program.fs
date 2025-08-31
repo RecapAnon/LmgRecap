@@ -14,7 +14,6 @@ open System.Threading
 open System.Threading.Tasks
 open System.Web
 open CommandLineExtensions
-open FSharp.Control
 open Logging
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -22,14 +21,11 @@ open Microsoft.Extensions.Logging
 open Microsoft.ML.OnnxRuntimeGenAI
 open Microsoft.SemanticKernel
 open Microsoft.SemanticKernel.ChatCompletion
-open Microsoft.SemanticKernel.Connectors.Chroma
 open Microsoft.SemanticKernel.Connectors.OpenAI
-open Microsoft.SemanticKernel.Memory
 open Microsoft.SemanticKernel.Plugins.Memory
 open OpenAI
 open OpenQA.Selenium
 open OpenQA.Selenium.Firefox
-open Python.Runtime
 open VideoFrameExtractor
 open YamlDotNet.Core
 open YamlDotNet.Serialization
