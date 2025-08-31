@@ -275,20 +275,6 @@ let tryWrapper (f: 'b -> 'a) (b: 'b) : Result<'a, string> =
         globalLogger.LogError e.Message
         Error e.Message
 
-let memories =
-    let myHandler = new MyRedirectingHandler(appSettings)
-    let client = new HttpClient(myHandler)
-
-    MemoryBuilder()
-        .WithOpenAITextEmbeddingGeneration(appSettings.Embeddings.Model, appSettings.Embeddings.Key, null, client)
-        .WithMemoryStore(
-            new ChromaMemoryStore(
-                appSettings.MemoryStore.Endpoint,
-                (loggerFactory appSettings.Logging.LogLevel.Default)
-            )
-        )
-        .Build()
-
 let kernel =
     let aiClient service =
         let clientOptions = new OpenAIClientOptions()
@@ -314,23 +300,6 @@ let recapPluginDirectoryPath =
 
 let recapPluginFunctions =
     kernel.ImportPluginFromPromptDirectory(recapPluginDirectoryPath)
-
-let recapMemoryPlugin =
-    kernel.ImportPluginFromObject(new TextMemoryPlugin(memories))
-
-let importMarkdownFileIntoMemories filename =
-    Runtime.PythonDLL <- "python311.dll"
-    PythonEngine.Initialize()
-    use _ = Py.GIL()
-    use scope = Py.CreateScope()
-    scope.Exec(File.ReadAllText("RecreateChromaDb.py")) |> ignore
-
-    File.ReadAllText(filename)
-    |> fun t -> t.Split("\r\n\r\n")
-    |> Array.map (fun s -> s.Replace("\r\n- ", " ").Replace("**", ""))
-    |> Array.iter (fun l ->
-        (memories.SaveInformationAsync("Glossary", l, Guid.NewGuid().ToString()).Result
-         |> ignore))
 
 let set i v (a: KernelArguments) =
     a[i] <- v
@@ -656,23 +625,6 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
     |> Array.map (buildReferences cnm)
     |> sortNodesIntoRecap builder
     |> updateReferences
-
-let recall node =
-    match Option.isNone node.context with
-    | true ->
-        try
-            memories
-                .SearchAsync("Glossary", node.comment, 1, 0.8)
-                .FirstOrDefaultAsync()
-                .AsTask()
-            |> Task.toAsync
-            |> Async.RunSynchronously
-            |> fun t ->
-                { node with
-                    context = Some(t.Metadata.Text.ToString()) }
-        with _ ->
-            { node with context = Some "None." }
-    | _ -> node
 
 type Phi3Model =
     { Path: string
@@ -1622,12 +1574,6 @@ let main argv =
         |> addArgument argument1
         |> setHandler1 recap argument1
 
-    let command2 =
-        CommandLine.Command "load-memories"
-        |> addAlias "mem"
-        |> addArgument argument2
-        |> setHandler1 importMarkdownFileIntoMemories argument2
-
     let command3 =
         CommandLine.Command "print-recap"
         |> addArgument argument1
@@ -1687,7 +1633,6 @@ let main argv =
     |> addGlobalOption (CommandLine.Option<CaptionMethod> "--CaptionMethod")
     |> addGlobalOption (CommandLine.Option<Website> "--Website")
     |> addCommand command1
-    |> addCommand command2
     |> addCommand command3
     |> addCommand command4
     |> addCommand command5
