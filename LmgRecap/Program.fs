@@ -1123,210 +1123,6 @@ let recapToText builder =
     sprintf "Recap Length: %i\n" result.Length |> globalLogger.LogInformation
     result
 
-let printRecapHtml builder =
-    let strToLink input =
-        match String.IsNullOrEmpty(input) with
-        | true -> "&nbsp;"
-        | false ->
-            let pattern = @">(\d{5,9})"
-
-            let replacement = @$"<a href=""#p$1"" class=""quotelink"">&gt;&gt;$1</a>"
-
-            let input2 = input.Replace(">>", ">")
-            Regex.Replace(input2, pattern, replacement)
-
-    let sb = new StringBuilder()
-
-    sb
-        .Append(
-            """<html><head><link rel="stylesheet" title="switch" href="yotsubluenew.css"><link rel="stylesheet" title="switch" href="recap.css"></head><body>"""
-        )
-        .Append(
-            """<div class="boardBanner"><div id="bannerCnt" class="title desktop" data-src="176.jpg" title="Click to change"><img width="300" alt="4chan" src="https://desu-usergeneratedcontent.xyz/g/image/1712/76/1712768281067.png"></div><div class="boardTitle" title="Ctrl/⌘+click to edit board title" spellcheck="false">/lmg/ - Recap</div></div>"""
-        )
-        .Append(
-            """<table id="blotter" class="desktop"><thead><tr><td colspan="2"><hr class="aboveMidAd"></td></tr></thead><tbody id="blotter-msgs">"""
-        )
-    |> ignore
-
-    (recapToText builder).Replace(">>>", ">>").Split("\n")
-    |> Seq.map strToLink
-    |> Seq.map (
-        sprintf """<tr><td data-utc="1493903967" class="blotter-date"></td><td class="blotter-content">%s</td></tr>"""
-    )
-    |> Seq.iter (fun rt -> sb.Append(rt) |> ignore)
-
-    sb
-        .Append("""<tfoot><tr><td colspan="2"><hr class="aboveMidAd"></td></tr></tfoot>""")
-        .Append("</tbody></table>")
-    |> ignore
-
-    sb.Append("""<div class="row"><div>""") |> ignore
-
-    let repliesToHtml replies =
-        replies
-        |> Seq.map (fun r -> sprintf """<a href="#p%i" class="backlink">&gt;&gt;%i</a> """ r r)
-        |> String.concat ""
-
-    let chainNodeToHtml j =
-        sb
-            .Append(
-                $"""<div class="postContainer replyContainer noFile" id="pc{j.id}" data-full-i-d="g.{j.id}"><div class="replacedSideArrows" id="sa{j.id}"><a class="hide-reply-button" href="javascript:;"><span class="fa fa-minus-square-o"></span></a></div><div id="p{j.id}" class="post reply"><div class="postInfo desktop" id="pi{j.id}"><input type="checkbox" name="{j.id}" value="delete"> <span class="nameBlock"><span class="name">Anonymous</span> </span>"""
-            )
-            .Append($""" <span class="dateTime" data-utc="{j.timestamp}">{j.now}</span> """)
-            .Append(
-                $"""<span class="postNum desktop"><a href="#p{j.id}" title="Link to this post">No.</a><a href="javascript:quote('{j.id}');" title="Reply to this post">{j.id}</a></span>"""
-            )
-            .Append(
-                """<a class="menu-button" href="javascript:;"><i class="fa fa-angle-down"></i></a><span class="container"> """
-            )
-            .Append(repliesToHtml j.replies)
-            .Append("""</span></div>""")
-        |> ignore
-
-        if Option.isSome j.filename then
-            sb.Append(
-                $"""<div class="file" id="f102490301"><div class="fileText" id="fT102490301">
-            <a class="fileThumb" href="https://i.4cdn.org/g/{j.filename.Value}" target="_blank"><img src="https://i.4cdn.org/g/{j.filename.Value}" alt="296 KB" data-md5="j6z5wuRT0sPDtl6zHoFnVg==" width=150 loading="lazy"></a>
-            </div></div>"""
-            )
-            |> ignore
-
-        let mardownLinksToHtml a =
-            Regex.Replace(a, @"\[(.*?)\]\((.*?)\)", "<a href=\"$2\">$2</a>")
-
-        sb
-            .Append($"""<blockquote class="postMessage" id="m{j.id}" style="white-space: pre-wrap;">""")
-            .Append(strToLink (mardownLinksToHtml j.comment))
-            .Append("</blockquote></div></div>")
-        |> ignore
-
-    let chainToHtml chain =
-        let chainSummary c =
-            match c.Category with
-            | d when d <> "" && d <> "Miku" -> d + ": " + c.Summary
-            | _ -> c.Summary
-
-        sb.Append($"<h2>{chainSummary chain}</h2>") |> ignore
-        chain |> getIncludedNodesMinRating |> Seq.iter chainNodeToHtml
-
-    builder.Chains
-    |> Array.filter (fun r -> r.Category = "Paper")
-    |> Array.filter (fun r -> r |> getIncludedNodesMinRating |> Seq.length > 1)
-    |> Array.iter chainToHtml
-
-    builder.Chains
-    |> Array.filter (fun r -> r.Category = "Paper")
-    |> Array.filter (fun r -> r |> getIncludedNodesMinRating |> Seq.length = 1)
-    |> fun arr ->
-        (if Array.length arr > 0 then
-             sb.Append("<h2>Papers</h2>") |> ignore)
-
-        arr
-    |> Array.map (fun r -> r.Nodes[0])
-    |> Seq.iter chainNodeToHtml
-
-    builder.Chains
-    |> Array.filter (fun r -> r.Category <> "Paper" && minRatingChain r.Rating)
-    |> Array.sortByDescending (fun c -> (c.Rating, (c.Nodes.Length), c.Summary))
-    |> Array.iter chainToHtml
-
-    sb.Append("</div></div>") |> ignore
-
-    sb.Append("<h2>Miku (free space)</h2>") |> ignore
-
-    builder.Chains
-    |> Seq.collect (fun c -> c.Nodes)
-    |> Seq.filter (fun node -> Option.isSome node.filename)
-    |> Seq.filter (fun node -> node.label.IsSome && (node.label.Value <> "other"))
-    |> Seq.sortBy (fun c -> c.id)
-    |> Seq.iter (fun miku ->
-        sb.Append($"""<a id="p{miku.id}"><img width=400 src="https://i.4cdn.org/g/{miku.filename.Value}"></img></a>""")
-        |> ignore)
-
-    sb.Append("</body></html>") |> ignore
-    File.WriteAllText($"recap-{builder.ThreadId}.html", sb.ToString())
-    builder
-
-let generateHtmlTable (file1Path: string) (file2Path: string) =
-    let loadAndPrepareNodes (filePath: string) =
-        filePath
-        |> File.ReadAllText
-        |> JsonSerializer.Deserialize<RecapBuilder>
-        |> fun recapBuilder ->
-            recapBuilder.Chains
-            |> Array.collect (fun c -> c.Nodes)
-            |> Array.append (recapBuilder.Recaps |> Array.collect (fun c -> c.Nodes))
-            |> Array.filter (fun n -> n.filename.IsSome && n.caption.IsSome)
-            |> Array.sortBy (fun n -> n.filename.Value)
-
-    let nodes1 = loadAndPrepareNodes file1Path
-    let nodes2 = loadAndPrepareNodes file2Path
-
-    let pairedNodes =
-        nodes1
-        |> Array.zip nodes2
-        |> Array.choose (fun (n1, n2) ->
-            if n1.filename = n2.filename then
-                Some(n1.caption.Value, n1.filename.Value, n2.caption.Value)
-            else
-                None)
-
-    let html =
-        let mediaTag (f: string) =
-            let ext = Path.GetExtension(f).ToLower()
-
-            match ext with
-            | ".mp4"
-            | ".webm" ->
-                $"""<video><source src="https://i.4cdn.org/g/{f}" type="video/{ext.Replace(".", "")}"></video>"""
-            | _ -> $"<img src=\"https://i.4cdn.org/g/{f}\">"
-
-        let tableRow (c1, f, c2) =
-            $"<tr><td class=\"text-col\"><pre>{c1}</pre></td><td class=\"image-col\">{mediaTag f}</td><td class=\"text-col\"><pre>{c2}</pre></td></tr>"
-
-        let tableBody = pairedNodes |> Array.map tableRow |> String.concat ""
-
-        $"<html>
-            <head>
-                <style>
-                    table {{
-                        width: 100%%;
-                        table-layout: fixed;
-                    }}
-                    td {{
-                        padding: 10px;
-                        vertical-align: top;
-                    }}
-                    .text-col {{
-                        width: 40%%;
-                        word-wrap: break-word;
-                    }}
-                    .image-col {{
-                        width: 20%%;
-                    }}
-                    img, video {{
-                        max-width: 100%%;
-                        height: auto;
-                        max-height: 250px;
-                        display: block;
-                        margin: 0 auto;
-                    }}
-                    pre {{
-                        white-space: pre-wrap;
-                    }}
-                </style>
-            </head>
-            <body>
-                <table border='1'>
-                    <tr><th>First Caption</th><th>Image</th><th>Second Caption</th></tr>
-                    {tableBody}
-                </table>
-            </body>
-        </html>"
-
-    File.WriteAllText("output.html", html)
-
 let saveRecap builder =
     let json = JsonSerializer.Serialize(builder)
     File.WriteAllText($"{builder.ThreadId}.recap.json", json)
@@ -1443,8 +1239,6 @@ let printRecapOnly threadNumber =
     threadNumber
     |> createRecapBuilder
     |> loadRecapFromSaveFile
-    |> printRecapHtml
-    |> recapToYamlFile
     |> recapToText
     |> printfn "%s"
     |> ignore
@@ -1614,12 +1408,6 @@ let main argv =
         |> addArgument argument1
         |> setHandler1 monitorThread argument1
 
-    let command10 =
-        CommandLine.Command "table"
-        |> addArgument argument5
-        |> addArgument argument6
-        |> setHandler2 generateHtmlTable argument5 argument6
-
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
@@ -1640,5 +1428,4 @@ let main argv =
     |> addCommand command7
     |> addCommand command8
     |> addCommand command9
-    |> addCommand command10
     |> invoke argv
