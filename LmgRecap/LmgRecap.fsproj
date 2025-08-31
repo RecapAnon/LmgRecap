@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="CommandlineExtensions.fs" />
     <Compile Include="Logging.fs" />
+    <Compile Include="ResultExtensions.fs" />
     <Compile Include="VideoFrameExtractor.fs" />
     <Compile Include="WaifuDiffusionPredictor.fs" />
     <Compile Include="Program.fs" />
