@@ -72,7 +72,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FSUtils.fs" />
+    <Compile Include="CommandlineExtensions.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="VideoFrameExtractor.fs" />
     <Compile Include="WaifuDiffusionPredictor.fs" />

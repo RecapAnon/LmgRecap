@@ -13,8 +13,8 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 open System.Web
+open CommandLineExtensions
 open FSharp.Control
-open FSUtils
 open Logging
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -336,6 +336,10 @@ let importMarkdownFileIntoMemories filename =
     |> Array.iter (fun l ->
         (memories.SaveInformationAsync("Glossary", l, Guid.NewGuid().ToString()).Result
          |> ignore))
+
+let set i v (a: KernelArguments) =
+    a[i] <- v
+    a
 
 let ask kernelFunction (kernelArguments: KernelArguments) =
     for key in kernelArguments.Names do
