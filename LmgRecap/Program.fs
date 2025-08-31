@@ -1025,6 +1025,7 @@ let categorize (builder: RecapBuilder) =
         match
             chain.Nodes[0].comment.Contains("https://arxiv.org")
             || chain.Nodes[0].comment.Contains("https://huggingface.co/papers")
+            || chain.Nodes[0].comment.Contains("https://www.arxiv.org")
         with
         | true -> { chain with Category = "Paper" }
         | false -> chain
