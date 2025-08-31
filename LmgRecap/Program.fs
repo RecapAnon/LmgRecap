@@ -811,6 +811,7 @@ let getWaifuTags (logger: ILogger) (tagger: WaifuDiffusionPredictor option) (byt
         logger.LogInformation("WaifuDiffusion Tags: {Tags}", allTags)
 
         result.CharacterTags
+        |> Array.map (fun (tag, score) -> ((tag.Replace("character:", "")), score))
         |> Array.filter (fun (tag, _) -> allowed.Contains(tag))
         |> Array.sortByDescending snd
         |> Array.tryHead
