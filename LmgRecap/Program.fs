@@ -993,7 +993,7 @@ let rateMultipleInChain (recapPluginFunctions: KernelPlugin) (chain: Chain) =
 
         KernelArguments(openAIPromptExecutionSettings)
         |> set "chain" c
-        |> set "unrated" (unrated |> setToString (Seq.truncate 5))
+        |> set "unrated" (unrated |> setToString (Seq.truncate 15))
         |> ask recapPluginFunctions["RateMultiple"]
         |> deserializer.Deserialize<MultiRateOutput[]>
         |> Array.filter (fun r -> chainmap.ContainsKey(r.Id))
