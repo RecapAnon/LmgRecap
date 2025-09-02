@@ -18,11 +18,9 @@ open Logging
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
-open Microsoft.ML.OnnxRuntimeGenAI
 open Microsoft.SemanticKernel
 open Microsoft.SemanticKernel.ChatCompletion
 open Microsoft.SemanticKernel.Connectors.OpenAI
-open Microsoft.SemanticKernel.Plugins.Memory
 open OpenAI
 open OpenQA.Selenium
 open OpenQA.Selenium.Firefox
@@ -306,9 +304,6 @@ let ask kernelFunction (kernelArguments: KernelArguments) =
         globalLogger.LogDebug(key + ":\n" + kernelArguments[key].ToString())
 
     kernelArguments
-    |> set TextMemoryPlugin.CollectionParam "Glossary"
-    |> set TextMemoryPlugin.LimitParam "1"
-    |> set TextMemoryPlugin.RelevanceParam "0.8"
     |> fun args ->
         kernel
             .InvokeAsync(kernelFunction, args)
@@ -622,68 +617,6 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
     |> sortNodesIntoRecap builder
     |> updateReferences
 
-type Phi3Model =
-    { Path: string
-      SystemPrompt: string
-      UserPrompt: string
-      FullPrompt: string
-      Model: Model
-      Processor: MultiModalProcessor
-      TokenizerStream: TokenizerStream }
-
-    static member Empty() =
-        { Path = ""
-          SystemPrompt = ""
-          UserPrompt = ""
-          FullPrompt = ""
-          Model = null
-          Processor = null
-          TokenizerStream = null }
-
-    static member New() =
-        let path = @"D:\_models\Phi-3-vision-128k-instruct-onnx-cuda\cuda-int4-rtn-block-32"
-
-        let systemPrompt =
-            "You are an AI assistant that helps people find information. Answer questions using a direct style."
-
-        let userPrompt =
-            "Describe what is in the image. If the image is a chatlog with an AI chatbot, either as an assistant or a character in a roleplay, use the word chatlog in your description. Otherwise don't mention it."
-
-        let model = new Model(path)
-        let processor = new MultiModalProcessor(model)
-
-        { Path = path
-          SystemPrompt = systemPrompt
-          UserPrompt = userPrompt
-          FullPrompt = $"<|system|>{systemPrompt}<|end|><|user|><|image_1|>{userPrompt}<|end|><|assistant|>"
-          Model = model
-          Processor = processor
-          TokenizerStream = processor.CreateStream() }
-
-let captionNodePhi3 phi3Model imagePath =
-    let img = Images.Load imagePath
-
-    globalLogger.LogInformation "Start processing image and prompt ..."
-    let inputTensors = phi3Model.Processor.ProcessImages(phi3Model.FullPrompt, img)
-
-    use generatorParams = new GeneratorParams(phi3Model.Model)
-    generatorParams.SetSearchOption("max_length", 3072)
-    generatorParams.SetInputs(inputTensors)
-
-    globalLogger.LogInformation "Generating response ..."
-    let mutable response = new StringBuilder()
-    use generator = new Generator(phi3Model.Model, generatorParams)
-
-    while not (generator.IsDone()) do
-        generator.ComputeLogits()
-        generator.GenerateNextToken()
-        let seq = generator.GetSequence(0UL)
-        let lastElement = phi3Model.TokenizerStream.Decode seq[seq.Length - 1]
-        response <- response.Append(lastElement)
-
-    globalLogger.LogInformation("Generation complete: {GeneratorResponse}", response)
-    Some(response.ToString().Trim())
-
 let getMimeType (file: string) =
     let extension = Path.GetExtension(file).ToLower()
 
@@ -775,7 +708,7 @@ let identifyNode tagger (path: string) node =
         label = Some label
         confidence = Some 1.0f }
 
-let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor option) (phi3Model) (node) =
+let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor option) (node) =
     let url =
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
@@ -799,7 +732,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor 
 
     try
         match appSettings.CaptionMethod with
-        | CaptionMethod.Onnx -> captionNodePhi3 phi3Model processedPath
+        | CaptionMethod.Onnx -> None
         | CaptionMethod.Api -> captionNodeApi processedPath
         | _ -> node.caption
         |> fun caption -> { node with caption = caption }
@@ -810,13 +743,13 @@ let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor 
         if processedPath <> downloadedPath then
             File.Delete(processedPath)
 
-let captionNode (driver: FirefoxDriver) session phi3Model node =
+let captionNode (driver: FirefoxDriver) session node =
     Directory.EnumerateFiles(appSettings.Selenium.Downloads)
     |> Seq.iter (fun f -> File.Delete(f))
 
     match node.filename, node.caption with
     | Some _, None ->
-        tryWrapper (tryCaptionIdentify driver session phi3Model) node
+        tryWrapper (tryCaptionIdentify driver session) node
         |> Result.defaultValue node
     | _ -> node
 
@@ -832,11 +765,6 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
         with ex ->
             logger.LogError(ex, "Failed to initialize WaifuDiffusionPredictor: {Error}", ex.Message)
             None
-
-    let phi3Model =
-        match appSettings.CaptionMethod with
-        | CaptionMethod.Onnx -> Phi3Model.New()
-        | _ -> Phi3Model.Empty()
 
     match appSettings.Website with
     | Website.FourChan ->
@@ -854,7 +782,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             builder.Chains
             |> Array.map (fun chain ->
                 { chain with
-                    Nodes = chain.Nodes |> Array.map (captionNode driver tagger phi3Model) }) }
+                    Nodes = chain.Nodes |> Array.map (captionNode driver tagger) }) }
 
 let getIncludedNodes alwaysAddOp rating chain =
     let nodes = new List<ChainNode>()
