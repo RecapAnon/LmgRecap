@@ -5,13 +5,11 @@ open System.Collections.Generic
 open System.Diagnostics
 open System.IO
 open System.Linq
-open System.Net.Http
 open System.Reflection
 open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
 open System.Threading
-open System.Threading.Tasks
 open System.Web
 open CommandLineExtensions
 open Logging
@@ -77,22 +75,6 @@ type AppSettings =
       Logging: LoggingConfig
       CaptionMethod: CaptionMethod
       Website: Website }
-
-type MyRedirectingHandler(appSettings) =
-    inherit DelegatingHandler(new HttpClientHandler())
-
-    override this.SendAsync
-        (
-            request: HttpRequestMessage,
-            cancellationToken: CancellationToken
-        ) : Task<HttpResponseMessage> =
-        let embeddingsUri = new Uri(appSettings.Embeddings.Endpoint)
-        let uriBuilder = new UriBuilder(request.RequestUri)
-        uriBuilder.Host <- embeddingsUri.Host
-        uriBuilder.Port <- embeddingsUri.Port
-        uriBuilder.Scheme <- embeddingsUri.Scheme
-        request.RequestUri <- uriBuilder.Uri
-        base.SendAsync(request, cancellationToken)
 
 type Post =
     { no: int64
