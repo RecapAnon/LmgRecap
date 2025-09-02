@@ -36,7 +36,7 @@ type CaptionMethod =
 
 type Website =
     | FourChan = 0
-    | GayChan = 1
+    | Meguca = 1
     | EightChan = 2
 
 type Selenium =
@@ -104,7 +104,7 @@ type Post =
 
 type Thread = { posts: Post[] }
 
-type GayImage =
+type MegucaImage =
     { spoiler: bool
       audio: bool
       video: bool
@@ -119,7 +119,7 @@ type GayImage =
       sha1: string
       name: string }
 
-type GayPost =
+type MegucaPost =
     { editing: bool
       sage: bool
       auth: int
@@ -129,9 +129,9 @@ type GayPost =
       flag: string
       name: string
       trip: string
-      image: GayImage option }
+      image: MegucaImage option }
 
-type GayThread = { posts: GayPost[] }
+type MegucaThread = { posts: MegucaPost[] }
 
 type EightFile =
     { originalName: string
@@ -397,7 +397,7 @@ let mapEightPostToChainNode post =
       label = None
       confidence = None }
 
-let mapGayPostToChainNode (post: GayPost) =
+let mapMegucaPostToChainNode (post: MegucaPost) =
     let getFileExtension (fileType: int) =
         match fileType with
         | 0 -> ".jpg"
@@ -435,7 +435,7 @@ let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
         match appSettings.Website with
         | Website.EightChan
         | Website.FourChan -> "&gt;&gt;"
-        | Website.GayChan -> @"\u003E\u003E"
+        | Website.Meguca -> @"\u003E\u003E"
         | _ -> failwith "Invalid Website Selection"
 
     { node with
@@ -492,7 +492,7 @@ let sanitize (driver: FirefoxDriver) node =
                           |> Seq.fold
                               (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})"))
                               c)
-                 | Website.GayChan ->
+                 | Website.Meguca ->
                      node.unsanitized
                      |> HttpUtility.HtmlDecode
                      |> fun c -> c.Replace("https://arxiv.org/pdf", "https://arxiv.org/abs").Trim()
@@ -592,14 +592,14 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
          |> fun a -> a.posts[1..]
          |> Array.filter (fun p -> p.no > maxId)
          |> Array.map mapPostToChainNode
-     | Website.GayChan ->
+     | Website.Meguca ->
          driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
 
          driver.FindElement(By.Id("post-data")).GetAttribute("textContent")
-         |> JsonSerializer.Deserialize<GayThread>
+         |> JsonSerializer.Deserialize<MegucaThread>
          |> fun a -> a.posts
          |> Array.filter (fun p -> p.id > maxId)
-         |> Array.map mapGayPostToChainNode
+         |> Array.map mapMegucaPostToChainNode
      | Website.EightChan ->
          driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.json")
          Thread.Sleep(2000)
@@ -658,7 +658,7 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
     let downloadLink =
         match appSettings.Website with
         | Website.FourChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
-        | Website.GayChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
+        | Website.Meguca -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
         | Website.EightChan -> driver.FindElement(By.CssSelector($"a[href][download='{url}']"))
         | _ -> failwith "Invalid Website Selection"
 
@@ -712,7 +712,7 @@ let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor 
     let url =
         match appSettings.Website with
         | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
-        | Website.GayChan -> $"/assets/images/src/{node.filename.Value}"
+        | Website.Meguca -> $"/assets/images/src/{node.filename.Value}"
         | Website.EightChan -> node.filename.Value
         | _ -> failwith "Invalid Website Selection"
 
@@ -748,9 +748,7 @@ let captionNode (driver: FirefoxDriver) session node =
     |> Seq.iter (fun f -> File.Delete(f))
 
     match node.filename, node.caption with
-    | Some _, None ->
-        tryWrapper (tryCaptionIdentify driver session) node
-        |> Result.defaultValue node
+    | Some _, None -> tryWrapper (tryCaptionIdentify driver session) node |> Result.defaultValue node
     | _ -> node
 
 let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
@@ -771,7 +769,7 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
         driver
             .Navigate()
             .GoToUrl($"https://boards.4chan.org/g/thread/{builder.ThreadId}")
-    | Website.GayChan -> driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
+    | Website.Meguca -> driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
     | Website.EightChan -> driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.html")
     | _ -> failwith "Invalid Website Selection"
 
