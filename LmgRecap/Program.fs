@@ -1112,15 +1112,6 @@ let dropSummary threadNumber postNumber =
     |> printfn "%s"
     |> ignore
 
-let threadSummaryRecap threadNumber =
-    threadNumber
-    |> createRecapBuilder
-    |> loadRecapFromSaveFile
-    |> recapToYaml
-    |> (askDefault recapPluginFunctions["ThreadSummary"])
-    |> printfn "%s"
-    |> ignore
-
 let generateSpeech (outputPath: string) (text: string) =
     if File.Exists(outputPath) then
         printfn $"Audio file already exists at {outputPath}"
@@ -1279,11 +1270,8 @@ let main argv =
     globalLogger <- (loggerFactory appSettings.Logging.LogLevel.Default).CreateLogger("")
 
     let argument1 = Argument<string> "threadNumber"
-    let argument2 = Argument<string> "filename"
     let argument3 = Argument<int64> "postNumber"
     let argument4 = Argument<int> "rating"
-    let argument5 = Argument<string> "filename1"
-    let argument6 = Argument<string> "filename2"
 
     let command1 =
         CommandLine.Command "recap"
@@ -1315,11 +1303,6 @@ let main argv =
         |> addArgument argument3
         |> setHandler2 dropSummary argument1 argument3
 
-    let command7 =
-        CommandLine.Command "thread-summary"
-        |> addArgument argument1
-        |> setHandler1 threadSummaryRecap argument1
-
     let command8 =
         CommandLine.Command "generate-newscaster-script"
         |> addArgument argument1
@@ -1347,7 +1330,6 @@ let main argv =
     |> addCommand command4
     |> addCommand command5
     |> addCommand command6
-    |> addCommand command7
     |> addCommand command8
     |> addCommand command9
     |> invoke argv
