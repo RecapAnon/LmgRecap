@@ -58,6 +58,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandlineExtensions.fs" />
+    <Compile Include="SharedTypes.fs" />
+    <Compile Include="Imageboards/ImageboardTypes.fs" />
+    <Compile Include="Imageboards/EightChanHandler.fs" />
+    <Compile Include="Imageboards/FourChanHandler.fs" />
+    <Compile Include="Imageboards/MegucaHandler.fs" />
+    <Compile Include="Imageboards/ImageboardHandlerFactory.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="ResultExtensions.fs" />
     <Compile Include="VideoFrameExtractor.fs" />

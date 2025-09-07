@@ -12,6 +12,8 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Web
 open CommandLineExtensions
+open LmgRecap.Imageboards
+open LmgRecap.Shared
 open Logging
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -26,183 +28,6 @@ open VideoFrameExtractor
 open YamlDotNet.Core
 open YamlDotNet.Serialization
 open YamlDotNet.Serialization.NamingConventions
-
-type CaptionMethod =
-    | Disabled = 0
-    | Onnx = 1
-    | Api = 2
-
-type Website =
-    | FourChan = 0
-    | Meguca = 1
-    | EightChan = 2
-
-type Selenium =
-    { Headless: bool
-      Downloads: string
-      Profile: string
-      UserAgent: string }
-
-type Service =
-    { Endpoint: string
-      Key: string
-      Model: string }
-
-type LogLevelConfig =
-    { Default: Microsoft.Extensions.Logging.LogLevel }
-
-type LoggingConfig = { LogLevel: LogLevelConfig }
-
-type AppSettings =
-    { Embeddings: Service
-      Multimodal: Service
-      Completion: Service
-      Audio: Service
-      MemoryStore: Service
-      ResnetModelPath: string
-      UseCuda: bool
-      WDModelPath: string
-      WDLabelPath: string
-      MinimumRating: int
-      MinimumChainRating: int
-      MaxReplies: int
-      MaxLength: int
-      RateMultiple: bool
-      RateChain: bool
-      Describe: bool
-      Selenium: Selenium
-      Filters: string[]
-      Logging: LoggingConfig
-      CaptionMethod: CaptionMethod
-      Website: Website }
-
-type Post =
-    { no: int64
-      com: Option<string>
-      tim: Option<int64>
-      ext: Option<string>
-      time: int64
-      now: string }
-
-type Thread = { posts: Post[] }
-
-type MegucaImage =
-    { spoiler: bool
-      audio: bool
-      video: bool
-      file_type: int
-      thumb_type: int
-      length: int
-      dims: int array
-      size: int
-      artist: string
-      title: string
-      md5: string
-      sha1: string
-      name: string }
-
-type MegucaPost =
-    { editing: bool
-      sage: bool
-      auth: int
-      id: int64
-      time: int64
-      body: string
-      flag: string
-      name: string
-      trip: string
-      image: MegucaImage option }
-
-type MegucaThread = { posts: MegucaPost[] }
-
-type EightFile =
-    { originalName: string
-      path: string
-      thumb: string
-      mime: string
-      size: int
-      width: int option
-      height: int option }
-
-type EightPost =
-    { name: string
-      signedRole: string option
-      email: string option
-      id: string option
-      subject: string option
-      markdown: string
-      message: string
-      postId: int64
-      creation: string
-      files: EightFile array }
-
-type EightThread = { posts: EightPost[] }
-
-type CaptionResponse = { content: string }
-
-type Message = { content: string }
-
-type Choice = { message: Message }
-
-type CaptionResponse2 = { choices: Choice[] }
-
-type ChainNodeViewModel =
-    { id: int64
-      comment: string
-      attachment: string }
-
-type ChainViewModel =
-    { ReplyChainNumber: int
-      Comments: ChainNodeViewModel[] }
-
-[<CLIMutable>]
-type RatingOutput =
-    { KeyFactors: string
-      Analysis: string
-      Rating: int }
-
-[<CLIMutable>]
-type MultiRateOutput =
-    { Id: int64
-      KeyFactors: string
-      Analysis: string
-      Rating: int }
-
-[<CLIMutable>]
-type DescribeOutput =
-    { Clues: string
-      Reasoning: string
-      Summary: string }
-
-type ChainNode =
-    { id: int64
-      timestamp: int64
-      now: string
-      filtered: bool
-      links: int64[]
-      replies: int64[]
-      mutable ratings: RatingOutput[]
-      comment: string
-      unsanitized: string
-      context: Option<string>
-      mutable rating: int
-      reasoning: string
-      filename: Option<string>
-      caption: Option<string>
-      label: Option<string>
-      confidence: Option<float32> }
-
-type Chain =
-    { mutable Nodes: ChainNode[]
-      Category: string
-      Rating: int
-      Ratings: RatingOutput[]
-      Summary: string }
-
-type RecapBuilder =
-    { ThreadId: string
-      Chains: Chain[]
-      Recaps: Chain[] }
 
 let createRecapBuilder thread =
     { ThreadId = thread
@@ -320,179 +145,6 @@ let loadRecapFromSaveFile builder =
     | false -> builder
     | true -> filename |> File.ReadAllText |> JsonSerializer.Deserialize<RecapBuilder>
 
-let mapPostToChainNode post =
-    { id = post.no
-      timestamp = post.time
-      now = post.now
-      filtered = appSettings.Filters.Any(fun filter -> Regex.IsMatch((defaultArg post.com "").ToLower(), filter))
-      links = [||]
-      replies = [||]
-      ratings = [||]
-      comment = ""
-      unsanitized = defaultArg post.com ""
-      context = None
-      rating = -1
-      reasoning = ""
-      filename =
-        match post.tim.IsSome && post.ext.IsSome with
-        | true -> Some(post.tim.Value.ToString() + post.ext.Value.ToString())
-        | _ -> None
-      caption = None
-      label = None
-      confidence = None }
-
-let mapEightPostToChainNode post =
-    let getUnixTimestamp (datetimeString: string) : int64 =
-        let format = "yyyy-MM-ddTHH:mm:ss.fffZ"
-
-        match
-            DateTime.TryParseExact(datetimeString, format, null, System.Globalization.DateTimeStyles.AssumeUniversal)
-        with
-        | (true, datetimeObject) ->
-            let epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            int64 (datetimeObject - epoch).TotalSeconds
-        | (false, _) -> failwith "Invalid datetime format"
-
-    let ts = getUnixTimestamp post.creation
-
-    { id = post.postId
-      timestamp = ts
-      now =
-        DateTimeOffset
-            .FromUnixTimeSeconds(ts)
-            .UtcDateTime.ToString("dd MMM yyyy (ddd) HH:mm:ss")
-      filtered = appSettings.Filters.Any(fun filter -> Regex.IsMatch(post.markdown.ToLower(), filter))
-      links = [||]
-      replies = [||]
-      ratings = [||]
-      comment = ""
-      unsanitized = post.markdown
-      context = None
-      rating = -1
-      reasoning = ""
-      filename =
-        if post.files.Length > 0 then
-            Some post.files[0].originalName
-        else
-            None
-      caption = None
-      label = None
-      confidence = None }
-
-let mapMegucaPostToChainNode (post: MegucaPost) =
-    let getFileExtension (fileType: int) =
-        match fileType with
-        | 0 -> ".jpg"
-        | 1 -> ".png"
-        | 2 -> ".gif"
-        | 3 -> ".webm"
-        | 6 -> ".mp4"
-        | _ -> ""
-
-    { id = post.id
-      timestamp = post.time
-      now =
-        DateTimeOffset
-            .FromUnixTimeSeconds(post.time)
-            .UtcDateTime.ToString("dd MMM yyyy (ddd) HH:mm:ss")
-      filtered = appSettings.Filters.Any(fun filter -> Regex.IsMatch(post.body.ToLower(), filter))
-      links = [||]
-      replies = [||]
-      ratings = [||]
-      comment = ""
-      unsanitized = post.body
-      context = None
-      rating = -1
-      reasoning = ""
-      filename =
-        match post.image with
-        | Some image -> Some(image.sha1 + getFileExtension image.file_type)
-        | None -> None
-      caption = None
-      label = None
-      confidence = None }
-
-let buildReferences (chainmap: Dictionary<int64, ChainNode>) node =
-    let quoteIndicator =
-        match appSettings.Website with
-        | Website.EightChan
-        | Website.FourChan -> "&gt;&gt;"
-        | Website.Meguca -> @"\u003E\u003E"
-        | _ -> failwith "Invalid Website Selection"
-
-    { node with
-        links =
-            Regex.Matches(node.unsanitized, quoteIndicator + @"(\d{" + node.id.ToString().Length.ToString() + "})")
-            |> Seq.map (fun m -> m.Groups[1].ToString() |> Int64.Parse)
-            |> Seq.filter (fun id -> chainmap.ContainsKey id)
-            |> Array.ofSeq
-        replies =
-            chainmap.Values
-            |> Seq.filter (fun p -> p.unsanitized.Contains(node.id.ToString()))
-            |> Seq.map (fun p -> p.id)
-            |> Seq.toArray }
-
-let sanitize (driver: FirefoxDriver) node =
-    let fetchTitleFromUrlAsync (url: string) () : string =
-        driver.Navigate().GoToUrl url
-        Thread.Sleep(10 * 1000)
-        driver.Title
-
-    let stripTags (input: string) =
-        let sb = StringBuilder()
-        let mutable inTag = false
-
-        for c in input do
-            match c with
-            | '<' -> inTag <- true
-            | '>' -> inTag <- false
-            | _ when not inTag -> sb.Append(c) |> ignore
-            | _ -> ()
-
-        sb.ToString()
-
-    match node.comment = String.Empty with
-    | true ->
-        { node with
-            comment =
-                (match appSettings.Website with
-                 | Website.EightChan
-                 | Website.FourChan ->
-                     node.unsanitized.Replace("<br>", "\n")
-                     |> stripTags
-                     |> HttpUtility.HtmlDecode
-                     |> fun c -> c.Replace("https://arxiv.org/pdf", "https://arxiv.org/abs").Trim()
-                     |> fun c ->
-                         (Regex.Matches(
-                             c,
-                             @"https:\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?"
-                          )
-                          |> Seq.map (fun m ->
-                              m.Value,
-                              tryWrapper (fetchTitleFromUrlAsync m.Value) ()
-                              |> Result.defaultValue "Error fetching title")
-                          |> Seq.fold
-                              (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})"))
-                              c)
-                 | Website.Meguca ->
-                     node.unsanitized
-                     |> HttpUtility.HtmlDecode
-                     |> fun c -> c.Replace("https://arxiv.org/pdf", "https://arxiv.org/abs").Trim()
-                     |> fun c ->
-                         (Regex.Matches(
-                             c,
-                             @"https:\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?"
-                          )
-                          |> Seq.map (fun m ->
-                              m.Value,
-                              tryWrapper (fetchTitleFromUrlAsync m.Value) ()
-                              |> Result.defaultValue "Error fetching title")
-                          |> Seq.fold
-                              (fun (newText: string) (url, title) -> newText.Replace(url, $"[{title}]({url})"))
-                              c)
-                 | _ -> failwith "Invalid Website Selection") }
-    | _ -> node
-
 let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
     let mutable chains = builder.Chains
     let mutable recaps = builder.Recaps
@@ -536,7 +188,8 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
         Chains = chains
         Recaps = recaps }
 
-let fetchThreadJson (driver: FirefoxDriver) builder =
+let fetchThreadJson (driver: FirefoxDriver) (builder: RecapBuilder) =
+    let imageboardHandler = ImageboardHandlerFactory.CreateHandler(appSettings.Website)
     let cnm = new Dictionary<int64, ChainNode>()
 
     let populateChainNodeDictionary s =
@@ -561,41 +214,22 @@ let fetchThreadJson (driver: FirefoxDriver) builder =
                 oldbuilder.Chains
                 |> Array.map (fun chain ->
                     { chain with
-                        Nodes = chain.Nodes |> Array.map (buildReferences cnm) }) }
+                        Nodes =
+                            chain.Nodes
+                            |> Array.map (fun node -> imageboardHandler.BuildReferences(cnm, node)) }) }
 
-    (match appSettings.Website with
-     | Website.FourChan ->
-         driver
-             .Navigate()
-             .GoToUrl($"https://a.4cdn.org/g/thread/{builder.ThreadId}.json")
+    let fetchTitleFromUrlAsync (url: string) () : string =
+        driver.Navigate().GoToUrl url
+        System.Threading.Thread.Sleep(10 * 1000)
+        driver.Title
 
-         driver.FindElement(By.TagName("html")).Text
-         |> JsonSerializer.Deserialize<Thread>
-         |> fun a -> a.posts[1..]
-         |> Array.filter (fun p -> p.no > maxId)
-         |> Array.map mapPostToChainNode
-     | Website.Meguca ->
-         driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
+    let fetchTitleFromUrlAsync2 url =
+        tryWrapper (fetchTitleFromUrlAsync url) ()
 
-         driver.FindElement(By.Id("post-data")).GetAttribute("textContent")
-         |> JsonSerializer.Deserialize<MegucaThread>
-         |> fun a -> a.posts
-         |> Array.filter (fun p -> p.id > maxId)
-         |> Array.map mapMegucaPostToChainNode
-     | Website.EightChan ->
-         driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.json")
-         Thread.Sleep(2000)
-         driver.FindElement(By.CssSelector("h1 > a")).Click()
-
-         driver.FindElement(By.TagName("pre")).Text
-         |> JsonSerializer.Deserialize<EightThread>
-         |> fun a -> a.posts
-         |> Array.filter (fun p -> p.postId > maxId)
-         |> Array.map mapEightPostToChainNode
-     | _ -> failwith "Invalid Website Selection")
-    |> Array.map (sanitize driver)
+    imageboardHandler.FetchThreadJson(driver, builder, maxId, appSettings.Filters)
+    |> Array.map (fun i -> imageboardHandler.Sanitize(i, fetchTitleFromUrlAsync2))
     |> populateChainNodeDictionary
-    |> Array.map (buildReferences cnm)
+    |> Array.map (fun i -> imageboardHandler.BuildReferences(cnm, i))
     |> sortNodesIntoRecap builder
     |> updateReferences
 
@@ -637,13 +271,8 @@ let captionNodeApi (file: string) =
     Some(resultCategory.Content + ". " + result.Content)
 
 let downloadImage (driver: FirefoxDriver) (url: string) =
-    let downloadLink =
-        match appSettings.Website with
-        | Website.FourChan -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
-        | Website.Meguca -> driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
-        | Website.EightChan -> driver.FindElement(By.CssSelector($"a[href][download='{url}']"))
-        | _ -> failwith "Invalid Website Selection"
-
+    let imageboardHandler = ImageboardHandlerFactory.CreateHandler(appSettings.Website)
+    let downloadLink = imageboardHandler.GetDownloadLink(driver, url)
     downloadLink.SendKeys(Keys.Return)
 
     let rec waitForDownload (filePaths: IEnumerable<string>) =
@@ -691,13 +320,8 @@ let identifyNode tagger (path: string) node =
         confidence = Some 1.0f }
 
 let tryCaptionIdentify (driver: FirefoxDriver) (tagger: WaifuDiffusionPredictor option) (node) =
-    let url =
-        match appSettings.Website with
-        | Website.FourChan -> $"https://i.4cdn.org/g/{node.filename.Value}"
-        | Website.Meguca -> $"/assets/images/src/{node.filename.Value}"
-        | Website.EightChan -> node.filename.Value
-        | _ -> failwith "Invalid Website Selection"
-
+    let imageboardHandler = ImageboardHandlerFactory.CreateHandler(appSettings.Website)
+    let url = imageboardHandler.GetImageUrl(node.filename.Value)
     let downloadedPath = downloadImage driver url
 
     let processedPath =
@@ -746,14 +370,9 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
             logger.LogError(ex, "Failed to initialize WaifuDiffusionPredictor: {Error}", ex.Message)
             None
 
-    match appSettings.Website with
-    | Website.FourChan ->
-        driver
-            .Navigate()
-            .GoToUrl($"https://boards.4chan.org/g/thread/{builder.ThreadId}")
-    | Website.Meguca -> driver.Navigate().GoToUrl($"https://meta.4chan.gay/tech/{builder.ThreadId}")
-    | Website.EightChan -> driver.Navigate().GoToUrl($"https://8chan.moe/ais/res/{builder.ThreadId}.html")
-    | _ -> failwith "Invalid Website Selection"
+    let imageboardHandler = ImageboardHandlerFactory.CreateHandler(appSettings.Website)
+    let threadUrl = imageboardHandler.GetThreadUrl(builder.ThreadId)
+    driver.Navigate().GoToUrl(threadUrl)
 
     Threading.Thread.Sleep(4000)
 
