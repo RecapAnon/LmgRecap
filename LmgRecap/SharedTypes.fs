@@ -1,6 +1,3 @@
-// SharedTypes.fs
-// Defines shared types used across the application
-
 namespace LmgRecap.Shared
 
 type CaptionMethod =

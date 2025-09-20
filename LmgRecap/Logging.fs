@@ -3,7 +3,6 @@
 open Microsoft.Extensions.Logging
 open OpenTelemetry
 open OpenTelemetry.Resources
-open OpenTelemetry.Logs
 open OpenTelemetry.Trace
 open System
 open System.Diagnostics

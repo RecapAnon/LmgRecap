@@ -8,9 +8,7 @@ open System.Linq
 open System.Reflection
 open System.Text
 open System.Text.Json
-open System.Text.RegularExpressions
 open System.Threading
-open System.Web
 open CommandLineExtensions
 open LmgRecap.Imageboards
 open LmgRecap.Shared
