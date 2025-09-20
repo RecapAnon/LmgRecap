@@ -151,6 +151,8 @@ type WaifuDiffusionPredictor(modelPath: string, labelPath: string, useCuda: bool
     interface IDisposable with
         member _.Dispose() = session.Dispose()
 
+    member this.Dispose() = (this :> IDisposable).Dispose()
+
     member _.predict
         (image: byte array)
         (generalThresh: float)

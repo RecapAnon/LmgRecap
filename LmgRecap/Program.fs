@@ -374,6 +374,8 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
 
     Threading.Thread.Sleep(4000)
 
+    tagger |> Option.iter (fun t -> t.Dispose())
+
     { builder with
         Chains =
             builder.Chains
