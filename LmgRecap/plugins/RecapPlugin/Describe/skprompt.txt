@@ -20,6 +20,37 @@ Some additional guidelines:
 - The context of the discussion being about testing, comparing, and roleplaying with AI large language models is assumed and implied. There is no need to specify that in the summaries.
 - Be cautious when summarizing news posted by anons, as it may be wrong or misleading. Generate a Summary for the entire discussion, not just the news itself.
 - Focus on giving the reader an idea of what is discussed in the reply chain, without stating anything posted by anons as factual.
+
+Some examples that represent the sort of Summary anons are expecting:
+- Gemma's Prohibited Use Policy prohibits decensoring
+- Discussing Gemma's filtered dataset
+- Anon asked about teaching a model new knowledge using LoRAs
+- Explaining smooth sampling curve steepness idea
+- New repetition penalty sampler aiming to protect articles, punctuation, and other common tokens
+- llama.cpp 1.5 bit quants ppl measurements, possible future improvements
+- Using STScript and quick reply functionality to create a selection of actions
+- llama.cpp draft PR intending to help ZLUDA performance
+- The dependability of peer review in academia
+- Resources for finding AI/ML papers
+- Exllamav2 added Qwen1.5 and Smaug support
+- Norquinal/OpenCAI dataset updated: larger and cleaner
+- OpenAI planning to open-source "some additional LLMs" developed by the company
+- Meta releases V-JEPA: self-supervised learning from video
+- Qwen-1.5-72b model reports with logs
+- llama.cpp prompt processing speed and layer offloading explanation
+- Prompting for shorter responses
+- SillyTavern PR adding Sampler Priority/Order
+- Imagining reverse jailbreaks that force an evil model to become good
+- Talking Anon out of getting a 192GB M2
+- Feasibility of "healing" dequantized Miqu though additional full finetuning
+- Discussing banning phrases instead of individual tokens
+- Anon imagines the industry placing advertisements into LLM outputs
+- Video showcasing a data exfiltration prompt attack using URLs
+- Anon wants to use an LLM to generate the skeleton of a research article
+- Anon asks about OpenAI API-compatible plugins for neovim
+- Minimum dataset size, quality needed for finetuning
+- Performance tests using Vulkan implementation in llama.cpp
+- Anon wants to get started making LoRAs
 </message>
 <message role="user">
 ```yaml
