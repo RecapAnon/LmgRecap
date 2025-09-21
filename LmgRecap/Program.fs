@@ -285,14 +285,7 @@ let downloadImage (driver: FirefoxDriver) (url: string) =
 let getWaifuTags (logger: ILogger) (tagger: WaifuDiffusionPredictor option) (bytes: byte array) : string =
     match tagger with
     | Some t ->
-        let allowed =
-            [| "kasane teto"
-               "hatsune miku"
-               "kagamine rin"
-               "akita neru"
-               "yowane haku"
-               "megurine luka" |]
-
+        let allowed = appSettings.AllowedFreeSpaceTags
         let result = t.predict bytes 0.35 true 0.85 true
         let ratingTags = result.RatingTags |> Array.map fst
         let generalTags = result.GeneralTags |> Array.map fst

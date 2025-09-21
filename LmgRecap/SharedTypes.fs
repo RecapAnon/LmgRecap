@@ -47,7 +47,8 @@ type AppSettings =
       Filters: string[]
       Logging: LoggingConfig
       CaptionMethod: CaptionMethod
-      Website: Website }
+      Website: Website
+      AllowedFreeSpaceTags: string[] }
 
 type CaptionResponse = { content: string }
 
