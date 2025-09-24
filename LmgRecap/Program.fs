@@ -494,6 +494,7 @@ let categorize (builder: RecapBuilder) =
             chain.Nodes[0].comment.Contains("https://arxiv.org")
             || chain.Nodes[0].comment.Contains("https://huggingface.co/papers")
             || chain.Nodes[0].comment.Contains("https://www.arxiv.org")
+            || chain.Nodes[0].comment.Contains("https://ai.meta.com/research/publications")
         with
         | true -> { chain with Category = "Paper" }
         | false -> chain
