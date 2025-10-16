@@ -367,14 +367,18 @@ let caption (driver: FirefoxDriver) (builder: RecapBuilder) =
 
     Threading.Thread.Sleep(4000)
 
+    let newBuilder =
+        { builder with
+            Chains =
+                builder.Chains
+                |> Array.map (fun chain ->
+                    { chain with
+                        Nodes = chain.Nodes |> Array.map (captionNode driver tagger) }) }
+
     tagger |> Option.iter (fun t -> t.Dispose())
 
-    { builder with
-        Chains =
-            builder.Chains
-            |> Array.map (fun chain ->
-                { chain with
-                    Nodes = chain.Nodes |> Array.map (captionNode driver tagger) }) }
+    newBuilder
+
 
 let getIncludedNodes alwaysAddOp rating chain =
     let nodes = new List<ChainNode>()
