@@ -19,7 +19,7 @@ type FourChanHandler() =
 
             driver.FindElement(By.TagName("html")).Text
             |> JsonSerializer.Deserialize<Thread>
-            |> fun a -> a.posts
+            |> fun a -> a.posts[1..]
             |> Array.filter (fun p -> p.no > maxId)
             |> Array.map FourChanPost
             |> Array.map (fun i -> (this :> IImageboardHandler).MapPostToChainNode(filters, i))
@@ -101,7 +101,7 @@ type FourChanHandler() =
                                  c) }
             | _ -> node
 
-        member this.QuoteIndicator = ">>"
+        member this.QuoteIndicator = "&gt;&gt;"
 
         member this.GetDownloadLink(driver: FirefoxDriver, url: string) : IWebElement =
             driver.FindElement(By.CssSelector($"a[href='{url}'][download]"))
