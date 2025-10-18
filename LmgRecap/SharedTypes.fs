@@ -86,6 +86,22 @@ type DescribeOutput =
       Reasoning: string
       Summary: string }
 
+[<CLIMutable>]
+type SortChainViewModel =
+    { Id: int64
+      Summary: string
+      Analysis: string
+      ReplyCount: int
+      SortIndex: int }
+
+[<CLIMutable>]
+type SortOutput = { Id: int64; SortIndex: int }
+
+[<CLIMutable>]
+type SortInput =
+    { Sorted: SortChainViewModel[]
+      Unsorted: SortChainViewModel[] }
+
 type ChainNode =
     { id: int64
       timestamp: int64
@@ -109,7 +125,8 @@ type Chain =
       Category: string
       Rating: int
       Ratings: RatingOutput[]
-      Summary: string }
+      Summary: string
+      SortIndex: int }
 
 type RecapBuilder =
     { ThreadId: string

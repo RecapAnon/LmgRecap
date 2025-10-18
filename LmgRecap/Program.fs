@@ -171,7 +171,8 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
                              Category = ""
                              Rating = -1
                              Ratings = [||]
-                             Summary = "" } |]
+                             Summary = ""
+                             SortIndex = 0 } |]
             | false ->
                 chains <-
                     Array.append
@@ -180,7 +181,8 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
                              Category = ""
                              Rating = -1
                              Ratings = [||]
-                             Summary = "" } |])
+                             Summary = ""
+                             SortIndex = 0 } |])
 
     { builder with
         Chains = chains
@@ -600,7 +602,7 @@ let recapToText builder =
     builder.Chains
     |> Array.filter (fun r -> r.Category <> "Paper")
     |> Array.filter (fun r -> minRatingChain r.Rating)
-    |> Array.sortByDescending (fun c -> (c.Rating, (c.Nodes.Length), c.Summary))
+    |> Array.sortByDescending (fun c -> c.SortIndex)
     |> Array.iter (fun i ->
         i
         |> getIncludedNodesMinRating
@@ -634,6 +636,105 @@ let saveRecap builder =
     let json = JsonSerializer.Serialize(builder)
     File.WriteAllText($"{builder.ThreadId}.recap.json", json)
     builder
+
+let chainToSortViewModel (chain: Chain) : SortChainViewModel =
+    let summary =
+        if String.IsNullOrWhiteSpace chain.Summary then
+            ""
+        else
+            chain.Summary
+
+    let analysis =
+        match Array.tryLast chain.Ratings with
+        | Some r -> r.Analysis
+        | None -> ""
+
+    let firstId = chain.Nodes[0].id
+    let includedNodes = chain |> getIncludedNodesMinRating
+
+    { Id = firstId
+      Summary = summary
+      Analysis = analysis
+      ReplyCount = includedNodes.Count
+      SortIndex = chain.SortIndex }
+
+let buildSortInput (builder: RecapBuilder) : SortInput =
+    let sorted =
+        builder.Chains
+        |> Array.filter (fun c -> c.SortIndex > 0)
+        |> Array.sortBy (fun c -> c.SortIndex)
+        |> Array.map chainToSortViewModel
+
+    let unsorted =
+        builder.Chains
+        |> Array.filter (fun r -> minRatingChain r.Rating)
+        |> Array.filter (fun c -> c.SortIndex <= 0)
+        |> Array.map chainToSortViewModel
+
+    { Sorted = sorted; Unsorted = unsorted }
+
+let applySortResults (builder: RecapBuilder) (results: SortOutput[]) : RecapBuilder =
+    let resultsMap = results |> Seq.map (fun r -> r.Id, r.SortIndex) |> dict
+
+    let maxExisting =
+        builder.Chains
+        |> Seq.map (fun c -> c.SortIndex)
+        |> Seq.fold (fun acc v -> if v > acc then v else acc) 0
+
+    let maxFromResults =
+        if Seq.isEmpty results then
+            0
+        else
+            results |> Seq.map (fun r -> r.SortIndex) |> Seq.max
+
+    let baseMax =
+        if maxExisting > maxFromResults then
+            maxExisting
+        else
+            maxFromResults
+
+    // let mutable nextIdx = baseMax
+
+    let updated =
+        builder.Chains
+        |> Array.map (fun c ->
+            let id = c.Nodes[0].id
+
+            if resultsMap.ContainsKey(id) then
+                { c with SortIndex = resultsMap[id] }
+            else if c.SortIndex > 0 then
+                c
+            else c)
+            // else
+            //     nextIdx <- nextIdx + 1
+            //     { c with SortIndex = nextIdx })
+
+    { builder with Chains = updated }
+
+let sortChains (threadNumber: string) =
+    let builder = threadNumber |> createRecapBuilder |> loadRecapFromSaveFile
+    let input = buildSortInput builder
+
+    globalLogger.LogInformation(
+        "SortChains: {Sorted} sorted, {Unsorted} unsorted",
+        input.Sorted.Length,
+        input.Unsorted.Length
+    )
+
+    let results =
+        try
+            input
+            |> prettyPrintViewModel
+            |> askDefault recapPluginFunctions["SortChains"]
+            |> deserializer.Deserialize<SortOutput[]>
+        with ex ->
+            globalLogger.LogError(ex, "SortChains failed to parse model response: {Message}", ex.Message)
+            [||]
+
+    let updated = applySortResults builder results
+    updated |> saveRecap |> ignore
+
+    globalLogger.LogInformation("SortChains: SortIndex updated for {Count} chains", updated.Chains.Length)
 
 let overrideRating threadNumber postNumber rating =
     threadNumber
@@ -898,6 +999,11 @@ let main argv =
         |> addArgument argument1
         |> setHandler1 monitorThread argument1
 
+    let commandX =
+        CommandLine.Command "sort"
+        |> addArgument argument1
+        |> setHandler1 sortChains argument1
+
     RootCommand()
     |> addGlobalOption (CommandLine.Option<int> "--MinimumRating")
     |> addGlobalOption (CommandLine.Option<int> "--MinimumChainRating")
@@ -917,4 +1023,5 @@ let main argv =
     |> addCommand command6
     |> addCommand command8
     |> addCommand command9
+    |> addCommand commandX
     |> invoke argv
