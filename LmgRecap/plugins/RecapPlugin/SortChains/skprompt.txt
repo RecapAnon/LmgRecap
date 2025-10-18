@@ -6,7 +6,7 @@ You will be given
 - The current state of the recap with a cutoff indicator showing how close it is to the 2000-character limit
 
 Using this information, you must
-1. Assign a SortIndex from 0 to 100 to each reply chain based on
+1. Assign a SortIndex from 1 to 100, where 100 is the top and 1 is the bottom, to each reply chain based on
    - Overall usefulness rating
    - Relevance to core technical discussion
    - Quality of insights and engagement
@@ -24,8 +24,12 @@ Some additional guidelines
 - When in doubt, favor chains that foster understanding or showcase practical application
 - The SortIndex should reflect both individual chain merit and contribution to the overall recap quality
 - Provide only the sorted and indexed YAML list as your response, nothing else
+- Reply chains are added unsorted to the list with a SortIndex of -1. These MUST be assigned a new SortIndex between 1 and 100.
 - You may provide replacement SortIndex for already sorted chains if you decide a better position for them
 - Remember: Everything must fit within the 2000 character cutoff limit. Consider if a valuable chain should be moved up or a less valuable chain moved down in order to increase the quality of the recap.
+- DO NOT EVER ASSIGN A SortIndex of -1, 0, or any value outside of the 1-100 range.
+- If two chains have the same SortIndex, assign a new unique SortIndex to resolve the overlap.
+- If all chains have a valid SortIndex and you are satified with the current state of the recap, you can return an empty array.
 
 Example output:
 ```yaml

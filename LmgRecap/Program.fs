@@ -181,7 +181,7 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
                              Rating = -1
                              Ratings = [||]
                              Summary = ""
-                             SortIndex = 0 } |]
+                             SortIndex = -1 } |]
             | false ->
                 chains <-
                     Array.append
@@ -191,7 +191,7 @@ let sortNodesIntoRecap (builder: RecapBuilder) (chainNodes: ChainNode[]) =
                              Rating = -1
                              Ratings = [||]
                              Summary = ""
-                             SortIndex = 0 } |])
+                             SortIndex = -1 } |])
 
     { builder with
         Chains = chains
