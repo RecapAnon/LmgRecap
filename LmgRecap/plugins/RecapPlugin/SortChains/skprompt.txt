@@ -22,8 +22,10 @@ Some additional guidelines
 - Do not modify the content of the reply chains themselves
 - Chains containing benchmarks, chatlogs, news, or significant technical discussion should be prioritized
 - When in doubt, favor chains that foster understanding or showcase practical application
-- The Index should reflect both individual chain merit and contribution to the overall recap quality
+- The SortIndex should reflect both individual chain merit and contribution to the overall recap quality
 - Provide only the sorted and indexed YAML list as your response, nothing else
+- You may provide replacement SortIndex for already sorted chains if you decide a better position for them
+- Remember: Everything must fit within the 2000 character cutoff limit. Consider if a valuable chain should be moved up or a less valuable chain moved down in order to increase the quality of the recap.
 
 Example output:
 ```yaml
@@ -34,6 +36,11 @@ Example output:
 ```
 </message>
 <message role="user">
+Current recap:
+{{$recap}}
+[1993/2000 characters used]
+
+Reply chains:
 ```yaml
 {{$input}}
 ```

@@ -136,6 +136,15 @@ let askDefault kernelFunction prompt =
     |> set "input" prompt
     |> ask kernelFunction
 
+let askSort kernelFunction recap input =
+    let openAIPromptExecutionSettings = new OpenAIPromptExecutionSettings()
+    openAIPromptExecutionSettings.ServiceId <- "Completion"
+
+    KernelArguments(openAIPromptExecutionSettings)
+    |> set "recap" recap
+    |> set "input" input
+    |> ask kernelFunction
+
 let loadRecapFromSaveFile builder =
     let filename = $"{builder.ThreadId}.recap.json"
 
@@ -658,42 +667,14 @@ let chainToSortViewModel (chain: Chain) : SortChainViewModel =
       ReplyCount = includedNodes.Count
       SortIndex = chain.SortIndex }
 
-let buildSortInput (builder: RecapBuilder) : SortInput =
-    let sorted =
-        builder.Chains
-        |> Array.filter (fun c -> c.SortIndex > 0)
-        |> Array.sortBy (fun c -> c.SortIndex)
-        |> Array.map chainToSortViewModel
-
-    let unsorted =
-        builder.Chains
-        |> Array.filter (fun r -> minRatingChain r.Rating)
-        |> Array.filter (fun c -> c.SortIndex <= 0)
-        |> Array.map chainToSortViewModel
-
-    { Sorted = sorted; Unsorted = unsorted }
+let buildSortInput (builder: RecapBuilder) : SortChainViewModel array =
+    builder.Chains
+    |> Array.filter (fun r -> minRatingChain r.Rating)
+    |> Array.sortByDescending (fun c -> c.SortIndex)
+    |> Array.map chainToSortViewModel
 
 let applySortResults (builder: RecapBuilder) (results: SortOutput[]) : RecapBuilder =
     let resultsMap = results |> Seq.map (fun r -> r.Id, r.SortIndex) |> dict
-
-    let maxExisting =
-        builder.Chains
-        |> Seq.map (fun c -> c.SortIndex)
-        |> Seq.fold (fun acc v -> if v > acc then v else acc) 0
-
-    let maxFromResults =
-        if Seq.isEmpty results then
-            0
-        else
-            results |> Seq.map (fun r -> r.SortIndex) |> Seq.max
-
-    let baseMax =
-        if maxExisting > maxFromResults then
-            maxExisting
-        else
-            maxFromResults
-
-    // let mutable nextIdx = baseMax
 
     let updated =
         builder.Chains
@@ -705,27 +686,25 @@ let applySortResults (builder: RecapBuilder) (results: SortOutput[]) : RecapBuil
             else if c.SortIndex > 0 then
                 c
             else c)
-            // else
-            //     nextIdx <- nextIdx + 1
-            //     { c with SortIndex = nextIdx })
 
     { builder with Chains = updated }
 
 let sortChains (threadNumber: string) =
     let builder = threadNumber |> createRecapBuilder |> loadRecapFromSaveFile
+    let recapText = recapToText builder
     let input = buildSortInput builder
 
-    globalLogger.LogInformation(
-        "SortChains: {Sorted} sorted, {Unsorted} unsorted",
-        input.Sorted.Length,
-        input.Unsorted.Length
-    )
+    // globalLogger.LogInformation(
+    //     "SortChains: {Sorted} sorted, {Unsorted} unsorted",
+    //     input.Sorted.Length,
+    //     input.Unsorted.Length
+    // )
 
     let results =
         try
             input
             |> prettyPrintViewModel
-            |> askDefault recapPluginFunctions["SortChains"]
+            |> askSort recapPluginFunctions["SortChains"] recapText
             |> deserializer.Deserialize<SortOutput[]>
         with ex ->
             globalLogger.LogError(ex, "SortChains failed to parse model response: {Message}", ex.Message)

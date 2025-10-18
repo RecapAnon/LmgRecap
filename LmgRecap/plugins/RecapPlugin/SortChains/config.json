@@ -15,8 +15,13 @@
   },
   "input_variables": [
     {
+      "name": "recap",
+      "description": "Current recap content.",
+      "default": ""
+    },
+    {
       "name": "input",
-      "description": "Current recap",
+      "description": "Chains to sort.",
       "default": ""
     }
   ]

@@ -97,11 +97,6 @@ type SortChainViewModel =
 [<CLIMutable>]
 type SortOutput = { Id: int64; SortIndex: int }
 
-[<CLIMutable>]
-type SortInput =
-    { Sorted: SortChainViewModel[]
-      Unsorted: SortChainViewModel[] }
-
 type ChainNode =
     { id: int64
       timestamp: int64
