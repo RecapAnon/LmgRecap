@@ -136,12 +136,13 @@ let askDefault kernelFunction prompt =
     |> set "input" prompt
     |> ask kernelFunction
 
-let askSort kernelFunction recap input =
+let askSort kernelFunction (recap: string) input =
     let openAIPromptExecutionSettings = new OpenAIPromptExecutionSettings()
     openAIPromptExecutionSettings.ServiceId <- "Completion"
 
     KernelArguments(openAIPromptExecutionSettings)
     |> set "recap" recap
+    |> set "length" recap.Length
     |> set "input" input
     |> ask kernelFunction
 
